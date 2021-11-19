@@ -10,8 +10,8 @@
 #include <queue>
 #include <vector>
 #include <stack>
+#include <set>
 #include <unordered_map>
-#include <queue>
 
 using namespace std;
 
@@ -40,6 +40,7 @@ using namespace std;
 #endif
 
 #define NUMOFDIRS 8
+
 
 struct cell2d{
 
@@ -106,6 +107,7 @@ vector<int> getPath2d(vector<vector<cell2d>> &grid, int goalposeX, int goalposeY
     while (!(grid[row][col].parent.first == row
              && grid[row][col].parent.second == col)) {
         Path2d.push(make_pair(row, col));
+        mexPrintf("%d\n", Path2d.size());
         int temp_row = grid[row][col].parent.first;
         int temp_col = grid[row][col].parent.second;
         row = temp_row;
@@ -144,90 +146,98 @@ vector<int> search_2d(double* map, int x_size, int y_size, int collision_thresh,
 
     int dX[NUMOFDIRS] = {-1, -1, -1,  0,  0,  1, 1, 1};
     int dY[NUMOFDIRS] = {-1,  0,  1, -1,  1, -1, 0, 1};
-    int i, j, epsilon=1;
+    int i, j, epsilon=10;
+    // int goalposeX = (int) target_traj[target_steps-1];
+    // int goalposeY = (int) target_traj[target_steps-1+target_steps];
+
 
     int goalposeX = robotposeX;
     int goalposeY = robotposeY;
+    // int goalposeX = (int) targetposeX;
+    // int goalposeY = (int) targetposeY; 
 
-    vector<vector<bool>> closed(x_size+1, vector<bool> (y_size+1, false));
-    vector<vector<bool>> opened(x_size+1, vector<bool> (y_size+1, false));
+    vector<vector<bool>> closed(x_size, vector<bool> (y_size, false));
+    vector<vector<bool>> opened(x_size, vector<bool> (y_size, false));
     grid2d.clear();
-    grid2d.resize(x_size+1, vector<cell2d>(y_size+1));
-    for (i = 1; i <=x_size; i++) {
-        for (j = 1; j <=y_size; j++) {
+    grid2d.resize(x_size, vector<cell2d>(y_size));
+    for (i = 0; i < x_size; i++) {
+        for (j = 0; j < y_size; j++) {
             grid2d[i][j].f = INT_MAX;
             grid2d[i][j].g = INT_MAX;
             grid2d[i][j].h = INT_MAX;
             grid2d[i][j].parent = make_pair(-1, -1);
         }
     }
-
-    robotposeX = (int) target_traj[target_steps-1]; 
+    robotposeX = (int) target_traj[target_steps-1];
     robotposeY = (int) target_traj[target_steps-1+target_steps];
 
     i=robotposeX, j=robotposeY;
-    // set<listPair2d> open2d;
-    priority_queue<listPair2d, vector<listPair2d>, greater<listPair2d>> open2d;
 
-    // all potential goal poses (from halfway to end) have g=0 (starting state for backwards search)
-    for(int k=target_steps/2; k<target_steps; k++){
-        grid2d[target_traj[k]][target_traj[k+target_steps]].f = 0;
-        grid2d[target_traj[k]][target_traj[k+target_steps]].g = 0;
-        grid2d[target_traj[k]][target_traj[k+target_steps]].h = 0;
-        grid2d[target_traj[k]][target_traj[k+target_steps]].parent = make_pair(i, j);
-        open2d.push(make_pair(0, make_pair(target_traj[k], target_traj[k+target_steps])));
-    }     
+    grid2d[i][j].f = 0;
+    grid2d[i][j].g = 0;
+    grid2d[i][j].h = 0;
+    grid2d[i][j].parent = make_pair(i, j);
 
+    set<listPair2d> open2d;
+    open2d.insert(make_pair(0, make_pair(i, j)));
+    
     int newx, newy;
     vector<int> new_pose={robotposeX, robotposeY};
     bool found_path = false;
     if(robotposeX!=goalposeX || robotposeY!=goalposeY){
         while (!open2d.empty()) {
-
-            bool next = false;
-            while(!next){           
-                listPair2d curr = open2d.top();
-                open2d.pop();                                                                                   // remove s from OPEN
-                i = curr.second.first;
-                j = curr.second.second;
-                if(closed[i][j]==false){
-                    next=true;
-                }
-            }
-            closed[i][j] = true;                                                                                // insert s into CLOSED
+            listPair2d curr = *open2d.begin(); // remove s with the smallest f(s) from open2d;
+            open2d.erase(open2d.begin()); // remove s from open2d
+            i = curr.second.first;
+            j = curr.second.second;
+            closed[i][j] = true; //insert s into CLOSED
             int gNew, hNew, fNew;
-            if (i==goalposeX && j==goalposeY)                                                                   // if new pose is the goal pose
-            {
-                cost_2d=grid2d[i][j].g;
-                new_pose= getPath2d(grid2d, goalposeX, goalposeY);
-                found_path=true;
-            }
+            // mexPrintf("\n open size: %d", open2d.size());
             for(int dir = 0; dir < NUMOFDIRS; dir++)
             {
                 newx = i + dX[dir];
                 newy = j + dY[dir];
 
-                if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size)                                   //if new pose is within the map
+                if (newx >= 1 && newx <= x_size && newy >= 1 && newy <= y_size)  //if new pose is within the map
                 {   
-                    if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh))      // if new pose is not in CLOSED and is valid
+                    if (newx==goalposeX && newy==goalposeY)  //if new pose is the goal pose
+                    {
+                        // mexPrintf("\n 3");
+                        grid2d[newx][newy].parent.first = i;
+                        grid2d[newx][newy].parent.second = j;
+                        cost_2d=grid2d[i][j].g  + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];;
+                        new_pose= getPath2d(grid2d, goalposeX, goalposeY);
+                        mexPrintf("\n cost_2d: %d", cost_2d);
+                        found_path=true;
+                    }
+                    else if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh)) // if new pose is not in CLOSED and is valid
                     {
                         gNew = grid2d[i][j].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
-                        hNew = 0;                                                                               // Uninformed search for max coverage
+                        hNew = (int) epsilon*(sqrt(2)*MIN(abs(newx-goalposeX),abs(newy-goalposeY))+(MAX(abs(newx-goalposeX),abs(newy-goalposeY))-MIN(abs(newx-goalposeX),abs(newy-goalposeY))));
+                        // hNew = 0;
                         fNew = gNew + hNew;
-                        if (grid2d[newx][newy].g == INT_MAX || grid2d[newx][newy].g > gNew)                     // if g(s')>g(s)+c(s,s')
+                        // mexPrintf("\n 4");
+                        if (grid2d[newx][newy].g == INT_MAX || grid2d[newx][newy].g > gNew) //if g(s')>g(s)+c(s,s')
                         {
-                            open2d.push(make_pair(fNew, make_pair(newx,newy)));
+                            if(opened[newx][newy]==false){
+                                open2d.insert(make_pair(fNew, make_pair(newx, newy))); // insert s' in open2d
+                                opened[newx][newy]=true;
+                            }else{
+                                open2d.erase(make_pair(grid2d[newx][newy].f, make_pair(newx, newy)));
+                                open2d.insert(make_pair(fNew, make_pair(newx, newy)));
+                            }
+                            // mexPrintf("\n 5");
                             grid2d[newx][newy].f = fNew;  
-                            grid2d[newx][newy].g = gNew;                                                       // update g(s')
+                            grid2d[newx][newy].g = gNew;  // update g(s')
                             grid2d[newx][newy].h = hNew;
                             grid2d[newx][newy].parent = make_pair(i, j);
                         }
                     }
                 }
             }
+            if(found_path) break;   
         }
     }
-    mexPrintf("2d Search ended\n");
     return new_pose;
 }
 
@@ -246,7 +256,7 @@ static void planner(
         double* action_ptr
         )
 {    
-    if(curr_time==0){                                                                                               // initialize variables for new map
+    if(curr_time==0){
         have_path=false;
         Path = stack<pair<int,int>>();
         Path2d = queue<pair<int,int>>();
@@ -258,6 +268,7 @@ static void planner(
     if(have_path){
         if(!better_2dpath)
         {
+            // mexPrintf("\nPath empty: %d", Path.size());
             if(Path.size()>1){
                 Path.pop();
                 pair<int, int> p = Path.top();
@@ -267,8 +278,10 @@ static void planner(
                 action_ptr[0] = robotposeX;
                 action_ptr[1] = robotposeY;
             }
+            // mexPrintf("\n Next pose: %.2f,%.2f", action_ptr[0], action_ptr[1]);
             return;
         }else{
+            mexPrintf("\nPath empty: %d", Path2d.size());
             if(Path2d.size()>1){
                 Path2d.pop();
                 pair<int, int> p = Path2d.front();
@@ -279,35 +292,43 @@ static void planner(
                 action_ptr[1] = target_traj[trace_idx+target_steps];
                 trace_idx--;
             }
+            // mexPrintf("\n Next pose: %.2f,%.2f", action_ptr[0], action_ptr[1]);
             return;
         }
     }
 
     vector<int> new_pose2d={robotposeX, robotposeY};
-    new_pose2d = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,target_steps,target_traj,targetposeX,targetposeY);
-    
-    // 9-connected grid (for 3D)
+    // new_pose2d = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,target_steps,target_traj,targetposeX,targetposeY);
+
+
+    // 8-connected grid
     int dX[NUMOFDIRS+1] = {0, -1, -1, -1,  0,  0,  1, 1, 1};
     int dY[NUMOFDIRS+1] = {0, -1,  0,  1, -1,  1, -1, 0, 1};
     int dT = 1;
 
     vector<int> new_pose={robotposeX, robotposeY};
     clock_t tStart = clock();
-    double epsilon = 2;
-    int buffer_time = (int) 5*(double)MAX(x_size,y_size)/200;
+    double delta=0.1, epsilon=50;
+    int buffer_time = 10;
+    // double dist_to_object = sqrt(((robotposeX-targetposeX)*(robotposeX-targetposeX) + (robotposeY-targetposeY)*(robotposeY-targetposeY)));
     
     int goalposeX = (int) target_traj[target_steps-1];
     int goalposeY = (int) target_traj[target_steps-1+target_steps];
 
+    // mexPrintf("\n targetpose is %d,%d", targetposeX, targetposeY);
+    // mexPrintf("\n goalpose is %d,%d", goalposeX, goalposeY);
+
+    // vector<vector<vector<cell>>> grid(x_size, vector<vector<cell>> (y_size, vector<cell>));  // 3d grid to store the graph
     unordered_map<array<int,3> , cell, ArrayHasher >  grid;
+    // unordered_map<vector<int>,cell> grid;
     unordered_map<array<int,3> , bool, ArrayHasher >  closed;
     unordered_map<array<int,3> , bool, ArrayHasher >  opened;
-    // set<listPair> open;
-    priority_queue<listPair, vector<listPair>, greater<listPair>> open;
+    // unordered_map<vector<int>,bool> closed;   // closed list
+    set<listPair> open;
 
     int i, j, k;
 
-    i=robotposeX, j=robotposeY, k=curr_time;
+    i=robotposeX, j=robotposeY, k=0;
     cell c = {};
     c.parent = vector<int>{i, j, k};
     c.g = 0;
@@ -315,72 +336,83 @@ static void planner(
     c.h = 0;
     grid[{i,j,k}] = c;
     
-    open.push(make_pair(0, vector<int> {i,j,k}));
+    open.insert(make_pair(0, vector<int> {i,j,k}));
     int newx, newy, newt;
     bool found_path = false;
     int num_expanded = 0;
     while (!open.empty())
     {
-        // listPair curr = *open.begin();                                                                                  // remove s with the smallest f(s) from OPEN;
-        // open.erase(open.begin());
-        bool next = false;
-        // mexPrintf("open size: %d \n",open.size());
-        while(!next){                                                                              // check for duplicate elements in pq
-            listPair curr = open.top();
-            open.pop();                                                                            // remove s from OPEN
-            i = curr.second[0];
-            j = curr.second[1];
-            k = curr.second[2];
-            if((closed.find({i,j,k}) == closed.end() || closed[{i,j,k}]==false)){
-                next=true;
-            }
-        }
-        closed[{i,j,k}] = true;                                                                                         // insert s into CLOSED
-
+        listPair curr = *open.begin(); // remove s with the smallest f(s) from OPEN;
+        open.erase(open.begin()); // remove s from OPEN
+        
+        i = curr.second[0];
+        j = curr.second[1];
+        k = curr.second[2];
         int time_elapsed = buffer_time + (int)((clock() - tStart)/CLOCKS_PER_SEC);
-        int target_x = (int) target_traj[MIN(curr_time+k+time_elapsed, target_steps-1)];
-        int target_y = (int) target_traj[MIN(curr_time+k+time_elapsed+target_steps, 2*target_steps-1)];
+        closed[{i,j,k}] = true; //insert s into CLOSED
+        if((k+time_elapsed>=target_steps-curr_time-1 && path_size_2d+time_elapsed<=target_steps-curr_time) || (x_size>1000 && y_size>1000))
+        {
+            new_pose2d = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,target_steps,target_traj,targetposeX,targetposeY);
+            mexPrintf("\n found path 2d");
+            new_pose = new_pose2d;
+            have_path=true;
+            better_2dpath=true;
+            found_path=true;
+            break;
+        }
         int gNew, hNew, fNew;
         num_expanded++;
-        // mexPrintf("target_x: %d, target_y: %d \n",target_x, target_y);
-        // mexPrintf("time: %d \n",curr_time+k+time_elapsed);
-        if (i==target_x && j==target_y && curr_time+k+time_elapsed<=target_steps)                                       // if goal pose is expanded
-        {
-            mexPrintf("target i: %d, j: %d \n",i, j);
-            new_pose= getPath(grid, target_x, target_y, k);
-            found_path=true;
-            have_path=true;
-        }
-
+        // mexPrintf("\n num_expanded: %d", num_expanded);
         for(int dir = 0; dir < NUMOFDIRS; dir++)
         {
             newx = i + dX[dir];
             newy = j + dY[dir];
-            newt = k + dT;
-            if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size && curr_time+newt+time_elapsed<=target_steps)  //if new pose is within the map
+            newt = k + dT;      //use absolute time 
+            // mexPrintf("\n child %d, %d", newx, newy);
+            int target_x = (int) target_traj[curr_time+time_elapsed+newt];
+            int target_y = (int) target_traj[curr_time+time_elapsed+newt+target_steps];
+            if (newx >= 1 && newx <= x_size && newy >= 1 && newy <= y_size && curr_time+newt+time_elapsed<=target_steps)  //if new pose is within the map
             {                      
-                // if new pose is not in CLOSED and is valid
-                if( (closed.find({newx,newy,newt}) == closed.end() || closed[{newx,newy,newt}]==false) && isValid(newx,newy,x_size,y_size,map,collision_thresh)) 
+                if (newx==target_x && newy==target_y)  //if new pose is the goal pose at that time
+                {
+                    mexPrintf("\n newt: %d, time_elapsed: %d", newt, time_elapsed);
+                    mexPrintf("\n target_x: %d, target_y: %d", target_x, target_y);
+                    grid[{newx,newy,newt}].parent = {i,j,k};
+                    new_pose= getPath(grid, target_x, target_y, newt);
+                    // new_pose= getPath(grid, goalposeX, goalposeY, newt);
+                    found_path=true;
+                    have_path=true;
+                }
+                else if( (closed.find({newx,newy,newt}) == closed.end() || closed[{newx,newy,newt}]==false) && isValid(newx,newy,x_size,y_size,map,collision_thresh)) // if new pose is not in CLOSED and is valid
                 {
                     gNew = grid[{i,j,k}].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
-                    hNew = (int) epsilon*grid2d[newx][newy].g;                                                                // use heuristic from 2D backward djikstra
+                    // gNew = grid[{i,j,k}].g + 1;
+                    hNew = (int) epsilon*(sqrt(2)*MIN(abs(newx-target_x),abs(newy-target_y))+(MAX(abs(newx-target_x),abs(newy-target_y))-MIN(abs(newx-target_x),abs(newy-target_y))));
+                    // hNew = grid2d[newx][newy].g;
                     fNew = gNew + hNew;
-
-                    if(grid.find({newx,newy,newt})==grid.end())                                                         // if node is not in grid cosnstruct graph
-                    {
-                        cell c = {};
-                        c.parent = vector<int>{-1,-1,-1};
-                        c.g = INT_MAX;
-                        c.h = INT_MAX;
-                        c.f = INT_MAX;
-                        grid[{newx,newy,newt}] = c;
+                    // mexPrintf("\n 4");
+                    if(grid.find({newx,newy,newt})==grid.end())
+                    {  // if node is not in grid construct graph
+                            cell c = {};
+                            c.parent = vector<int>{-1,-1,-1};
+                            c.g = INT_MAX;
+                            c.h = INT_MAX;
+                            c.f = INT_MAX;
+                            grid[{newx,newy,newt}] = c;
                             
                     }  
-                    if (grid[{newx,newy,newt}].g == INT_MAX || grid[{newx,newy,newt}].g > gNew)                         // if g(s')>g(s)+c(s,s')
-                    {    
-                        open.push(make_pair(fNew, vector<int> {newx,newy,newt}));                                       // update f in OPEN
+                    if (grid[{newx,newy,newt}].g == INT_MAX || grid[{newx,newy,newt}].g > gNew) //if g(s')>g(s)+c(s,s')
+                    {
+                        if(opened[{newx,newy,newt}]==false || (opened.find({newx,newy,newt}) == opened.end())){
+                                open.insert(make_pair(fNew,  vector<int> {newx,newy,newt})); // insert s' in OPEN
+                                opened[{newx,newy,newt}]=true;
+                        }else{
+                                open.erase(make_pair(grid[{newx,newy,newt}].f,  vector<int> {newx,newy,newt}));
+                                open.insert(make_pair(fNew,  vector<int> {newx,newy,newt}));
+                        }               
+                        // mexPrintf("\n 5");
                         grid[{newx,newy,newt}].f = fNew;  
-                        grid[{newx,newy,newt}].g = gNew;                                                                // update g(s')
+                        grid[{newx,newy,newt}].g = gNew;  // update g(s')
                         grid[{newx,newy,newt}].h = hNew;
                         grid[{newx,newy,newt}].parent =  vector<int> {i,j,k};
                     }
@@ -389,18 +421,26 @@ static void planner(
         }
         if(found_path) break;   
     }
-
     if(!found_path){
         new_pose = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,target_steps,target_traj,targetposeX,targetposeY);
         have_path=true;
         better_2dpath=true;
+        found_path=true;
     }
-    
+
+    // :::::::::::::::::::::: planner :::::::::::::::::::::::::::::::::::::::::::::::::
+    // mexPrintf("\n found path 3d %d", found_path);
+    // mexPrintf("\n robot: %d %d", robotposeX, robotposeY);
+    // mexPrintf("\n next goal is %d,%d \n", new_pose[0], new_pose[1]);
+
     robotposeX = new_pose[0];
     robotposeY = new_pose[1];
     action_ptr[0] = robotposeX;
-    action_ptr[1] = robotposeY;    
+    action_ptr[1] = robotposeY;
     mexPrintf("\nTime taken: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+    mexPrintf("object: %d %d;\n", (int) target_traj[curr_time],(int) target_traj[curr_time+target_steps]);
+    mexPrintf("num_expanded: %d ;\n", num_expanded);
+    
     return;
 }
 
