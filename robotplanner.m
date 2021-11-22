@@ -1,14 +1,15 @@
-function[action] = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs)
+function[action] = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs, numTar, caught)
 
-MEX = 2;
+MEX = 1;
 
 numofdirs = 8;
 dX = [-1 -1 -1  0  0  1 1 1];
 dY = [-1  0  1 -1  1 -1 0 1];
 
 if (MEX == 1)
+    
     % if using MEX, you would call the planner here
-    action = planner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs);
+    action = planner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs,numTar, caught);
     
 else
     % otherwise do planning right here

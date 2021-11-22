@@ -1,6 +1,6 @@
 function[caught, time, numofmoves, pathcost] = runtest(problemfile)
 
-[mapdims, C, robotstart, targettraj, envmap, numObs, Obs, sizeObs] = readproblem(problemfile);
+[mapdims, C, robotstart, targettraj, envmap, numObs, Obs, sizeObs,numTar] = readproblem(problemfile);
 
 close all;
 
@@ -26,21 +26,30 @@ if (hr ~= -1)
     delete(ht);
 end
 hr = text(robotpos(1), robotpos(2), 'R', 'Color', 'g', 'FontWeight', 'bold');
-ht = text(targetpos(1), targetpos(2), 'T', 'Color', 'm', 'FontWeight', 'bold');
 hr = scatter(robotpos(1), robotpos(2), 10, 'g', 'filled');
-ht = scatter(targetpos(1), targetpos(2), 10, 'm', 'filled');
+for i = 1:numTar
+    curX = targetpos(1+2*(i-1));
+    curY = targetpos(2+2*(i-1));
+    ht = text(curX, curY, 'T', 'Color', 'm', 'FontWeight', 'bold');
+    ht = scatter(curX, curY, 10, 'm', 'filled');
+end
+
+%gotta detect caught states
+caught = zeros(1,numTar);
 
 pause(1.0);
 
 % robot can take at most as many steps as target takes
 while (true)
     
+    %imagesc(envmap'); axis square; colorbar; colormap jet;
+    
     % call robot planner to find what they want to do
     t0 = clock;
-    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs);
-    if (size(newrobotpos, 1) > size(targettraj, 1) || size(newrobotpos, 2) ~= size(targettraj, 2))
+    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs,numTar, caught);
+    if (size(newrobotpos, 1) > size(targettraj, 1) || size(newrobotpos, 2) ~= 2)
         fprintf(1, 'ERROR: invalid action\n');
-        fprintf(1, '\t newrobotpos must be M x %d with M <= %d.\n', size(targettraj, 2), size(targettraj, 1));
+        fprintf(1, '\t newrobotpos must be M x %d with M <= %d.\n', 2, size(targettraj, 1));
         return;
     end
 
@@ -80,9 +89,6 @@ while (true)
     pathcost = pathcost + movetime*envmap(robotpos(1), robotpos(2));
     robotpos = newrobotpos;
     
-    %temp hard code
-    sizeObs = [20 20]
-    
     %draw moving obs here
     for i = 1:numObs
         xO = Obs(time,1+(i-1)*2);
@@ -106,15 +112,29 @@ while (true)
         delete(ht);
     end
     hr = text(robotpos(1), robotpos(2), 'R', 'Color', 'g', 'FontWeight', 'bold');
-    ht = text(targetpos(1), targetpos(2), 'T', 'Color', 'm', 'FontWeight', 'bold');
     hr = scatter(robotpos(1), robotpos(2), 10, 'g', 'filled');
-    ht = scatter(targetpos(1), targetpos(2), 10, 'm', 'filled');
+    
+    for i = 1:numTar
+        curX = targetpos(1+2*(i-1));
+        curY = targetpos(2+2*(i-1));
+        ht = text(curX, curY, 'T', 'Color', 'm', 'FontWeight', 'bold');
+        ht = scatter(curX, curY, 10, 'm', 'filled');
+    end
+
+    
     pause(0.0001);
     
     % check if target is caught
     thresh = 0.5;
-    if (abs(robotpos(1)-targetpos(1)) <= thresh && abs(robotpos(2)-targetpos(2)) <= thresh)
-        caught = true;
+    
+    for i = 1:numTar
+        curX = targetpos(1+2*(i-1));
+        curY = targetpos(2+2*(i-1));
+        if (abs(robotpos(1)-curX) <= thresh && abs(robotpos(2)-curY) <= thresh)
+            caught(i) = 1;
+        end
+    end
+    if(sum(caught) == numTar)
         break;
     end
 end
