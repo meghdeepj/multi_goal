@@ -46,7 +46,7 @@ while (true)
     
     % call robot planner to find what they want to do
     t0 = clock;
-    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs,numTar, caught);
+    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, numObs,Obs, sizeObs,numTar, caught);
     if (size(newrobotpos, 1) > size(targettraj, 1) || size(newrobotpos, 2) ~= 2)
         fprintf(1, 'ERROR: invalid action\n');
         fprintf(1, '\t newrobotpos must be M x %d with M <= %d.\n', 2, size(targettraj, 1));
