@@ -1,4 +1,4 @@
-function[action] = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs, numTar, caught)
+function[action] = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, numObs, Obs, sizeObs, numTar, caught)
 
 MEX = 1;
 
@@ -9,7 +9,7 @@ dY = [-1  0  1 -1  1 -1 0 1];
 if (MEX == 1)
     
     % if using MEX, you would call the planner here
-    action = planner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs,numTar, caught);
+    action = planner(envmap, robotpos, targettraj, targetpos, time, C, numObs, Obs, sizeObs,numTar, caught);
     
 else
     % otherwise do planning right here
