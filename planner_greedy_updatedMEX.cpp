@@ -78,7 +78,7 @@ static void planner(
     double* object_traj, 
     double* obj_size,
     double* caught
-        )
+    )
 {
     /*New added data
     * 

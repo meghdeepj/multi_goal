@@ -20,6 +20,12 @@ using namespace std;
 #define	CURR_TIME               prhs[4]
 #define	COLLISION_THRESH        prhs[5]
 
+#define NUMBER_OBJECTS          prhs[6]
+#define OBJECT_TRAJ             prhs[7]
+#define OBJECT_SIZE             prhs[8]
+#define NUMBER_TARGETS          prhs[9]
+#define CAUGHT                  prhs[10]
+
 
 /* Output Arguments */
 #define	ACTION_OUT              plhs[0]
@@ -56,6 +62,25 @@ struct cell {
     }
 };
 
+bool collCheck(int* objPose, int x, int y, int num, double* obj_size) //return true if given pose hits dyn object
+{
+    int szX = int(obj_size[0]);
+    int szY = int(obj_size[1]);
+    int curObX;
+    int curObY;
+    for (int i = 0; i < num; i++)
+    {
+        curObX = int(objPose[2 * i]);
+        curObY = int(objPose[2 * i + 1]); //pass object position
+        if(x > (curObX - szX/2)
+            && x < (curObX + szX/2)
+            && y > (curObY - szY / 2)
+            && y < (curObY + szY / 2))
+            return true;
+    }
+    return false;
+}
+
 bool isValid(int x, int y, int x_size, int y_size, double* map, int collision_thresh){
     if(((int)map[GETMAPINDEX(x,y,x_size,y_size)] >= 0) && ((int)map[GETMAPINDEX(x,y,x_size,y_size)] < collision_thresh)){
         return true;
@@ -87,19 +112,22 @@ vector<int> getPath(vector<vector<cell>> &grid, int goalposeX, int goalposeY)
 
 
 static void planner(
-        double*	map,
-        int collision_thresh,
-        int x_size,
-        int y_size,
-        int robotposeX,
-        int robotposeY,
-        int target_steps,
-        double* target_traj,
-        int targetposeX,
-        int targetposeY,
-        int curr_time,
-        double* action_ptr
-        )
+    double* map,
+    int collision_thresh,
+    int x_size,
+    int y_size,
+    int robotposeX,
+    int robotposeY,
+    int target_steps,
+    double* target_traj,
+    double* targetposeV,
+    // int curr_time,
+    double* action_ptr,
+    int num_obj,
+    double* object_traj, 
+    double* obj_size,
+    double* caught
+    )
 {
     // 8-connected grid
     int dX[NUMOFDIRS] = {-1, -1, -1,  0,  0,  1, 1, 1};
@@ -108,7 +136,7 @@ static void planner(
 
     double delta=0.1;
 
-    double dist_to_object = sqrt(((robotposeX-targetposeX)*(robotposeX-targetposeX) + (robotposeY-targetposeY)*(robotposeY-targetposeY)));
+    // double dist_to_object = sqrt(((robotposeX-targetposeX)*(robotposeX-targetposeX) + (robotposeY-targetposeY)*(robotposeY-targetposeY)));
 
     mexPrintf("\n target steps: %d", target_steps);
     mexPrintf("\n curr_time: %d", curr_time);
@@ -116,21 +144,21 @@ static void planner(
     mexPrintf("\n delta*dist: %f", delta*dist_to_object);
 
     int goalposeX = (int) target_traj[curr_time+(int)(delta*dist_to_object)];
-    int goalposeY = (int) target_traj[curr_time+target_steps+(int)(delta*dist_to_object)];
+    // int goalposeY = (int) target_traj[curr_time+target_steps+(int)(delta*dist_to_object)];
 
-    // int goalposeX = (int) target_traj[target_steps-1];
-    // int goalposeY = (int) target_traj[target_steps-1+target_steps];
+    int goalposeX = (int) target_traj[target_steps-1];
+    int goalposeY = (int) target_traj[target_steps-1+target_steps];
 
     // int goalposeX = targetposeX;
     // int goalposeY = targetposeY;
 
 
-    if(dist_to_object<20 || (int)(*(&target_traj + 1) - target_traj)==0){
-        int goalposeX = targetposeX;
-        int goalposeY = targetposeY;
-    }
+    // if(dist_to_object<20 || (int)(*(&target_traj + 1) - target_traj)==0){
+    //     int goalposeX = targetposeX;
+    //     int goalposeY = targetposeY;
+    // }
 
-    mexPrintf("\n targetpose is %d,%d", targetposeX, targetposeY);
+    // mexPrintf("\n targetpose is %d,%d", targetposeX, targetposeY);
     mexPrintf("\n goalpose is %d,%d", goalposeX, goalposeY);
 
     vector<vector<bool>> closed(x_size, vector<bool> (y_size, false));
@@ -168,7 +196,7 @@ static void planner(
             i = curr.second.first;
             j = curr.second.second;
             closed[i][j] = true; //insert s into CLOSED
-            mexPrintf("\n child 2D %d, %d", i, j);
+            // mexPrintf("\n child 2D %d, %d", i, j);
             int gNew, hNew, fNew;
             for(int dir = 0; dir < NUMOFDIRS; dir++)
             {
@@ -239,9 +267,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 {
     
     /* Check for proper number of arguments */
-    if (nrhs != 6) {
+    if (nrhs != 11) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
-                "Six input arguments required.");
+                "Invalid # of args.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
                 "One output argument required.");
@@ -267,7 +295,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     int targettraj_M = mxGetM(TARGET_TRAJ);
     int targettraj_N = mxGetN(TARGET_TRAJ);
     
-    if(targettraj_M < 1 || targettraj_N != 2)
+    if(targettraj_M < 1 )//|| targettraj_N != 2)
     {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidtargettraj",
                 "targettraj vector should be M by 2.");
@@ -278,13 +306,13 @@ void mexFunction( int nlhs, mxArray *plhs[],
     /* get the current position of the target*/
     int targetpose_M = mxGetM(TARGET_POS);
     int targetpose_N = mxGetN(TARGET_POS);
-    if(targetpose_M != 1 || targetpose_N != 2){
+    if(targetpose_M != 1 ){//|| targetpose_N != 2){
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidtargetpose",
                 "targetpose vector should be 1 by 2.");
     }
     double* targetposeV = mxGetPr(TARGET_POS);
-    int targetposeX = (int)targetposeV[0];
-    int targetposeY = (int)targetposeV[1];
+    //int targetposeX = (int)targetposeV[0];
+    //int targetposeY = (int)targetposeV[1]; 
     
     /* get the current timestep the target is at*/
     int curr_time = mxGetScalar(CURR_TIME);
@@ -296,8 +324,28 @@ void mexFunction( int nlhs, mxArray *plhs[],
     /* Get collision threshold for problem */
     int collision_thresh = (int) mxGetScalar(COLLISION_THRESH);
     
+    //Get the new stuff
+    int num_obj = mxGetScalar(NUMBER_OBJECTS);
+    int num_tar = mxGetScalar(NUMBER_TARGETS);
+    double* object_traj_set = mxGetPr(OBJECT_TRAJ);
+    double* obj_size = mxGetPr(OBJECT_SIZE);
+    double* caught = mxGetPr(CAUGHT);
+
     /* Do the actual planning in a subroutine */
-    planner(map, collision_thresh, x_size, y_size, robotposeX, robotposeY, target_steps, targettrajV, targetposeX, targetposeY, curr_time, &action_ptr[0]);
+    planner(map, 
+            collision_thresh, 
+            x_size, 
+            y_size, 
+            robotposeX, robotposeY, 
+            target_steps, 
+            targettrajV, 
+            targetposeV, 
+            curr_time, 
+            &action_ptr[0], 
+            num_obj, 
+            object_traj_set,
+            obj_size,
+            caught);
     // printf("DONE PLANNING!\n");
     return;   
 }
