@@ -9,6 +9,7 @@
 #include <vector>
 #include <stack>
 #include <set>
+#include <queue>
 
 using namespace std;
 
@@ -25,7 +26,6 @@ using namespace std;
 #define OBJECT_SIZE             prhs[8]
 #define NUMBER_TARGETS          prhs[9]
 #define CAUGHT                  prhs[10]
-
 
 /* Output Arguments */
 #define	ACTION_OUT              plhs[0]
@@ -46,8 +46,6 @@ using namespace std;
 
 typedef pair<int, pair<int, int> > listPair;
 
-
-
 struct cell {
 
     pair<int,int> parent;
@@ -62,21 +60,31 @@ struct cell {
     }
 };
 
-bool collCheck(int* objPose, int x, int y, int num, double* obj_size) //return true if given pose hits dyn object
-{
-    int szX = int(obj_size[0]);
-    int szY = int(obj_size[1]);
-    int curObX;
-    int curObY;
-    for (int i = 0; i < num; i++)
-    {
-        curObX = int(objPose[2 * i]);
-        curObY = int(objPose[2 * i + 1]); //pass object position
-        if(x > (curObX - szX/2)
-            && x < (curObX + szX/2)
-            && y > (curObY - szY / 2)
-            && y < (curObY + szY / 2))
-            return true;
+bool got_goal = false;
+queue<pair<int, int>> goal_poses;
+
+
+bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* obj_size, int t, int steps) //return true if given pose hits dyn object
+{   
+    mexPrintf("\ncoll check");
+    for (int i = 0; i < num_obj; i++){
+        int* objPose = new int[2];
+        objPose[0] = (int)object_traj[t+2*i*steps];
+        objPose[1] = (int)object_traj[t+(2*i+1)*steps];   
+        int szX = int(obj_size[0]);
+        int szY = int(obj_size[1]);
+        int curObX;
+        int curObY;
+        for (int i = 0; i < num; i++)
+        {
+            curObX = int(objPose[2 * i]);
+            curObY = int(objPose[2 * i + 1]); //pass object position
+            if(x > (curObX - szX/2)
+                && x < (curObX + szX/2)
+                && y > (curObY - szY / 2)
+                && y < (curObY + szY / 2))
+                return true;
+        }
     }
     return false;
 }
@@ -84,7 +92,7 @@ bool collCheck(int* objPose, int x, int y, int num, double* obj_size) //return t
 bool isValid(int x, int y, int x_size, int y_size, double* map, int collision_thresh){
     if(((int)map[GETMAPINDEX(x,y,x_size,y_size)] >= 0) && ((int)map[GETMAPINDEX(x,y,x_size,y_size)] < collision_thresh)){
         return true;
-    }
+    };
     return false;
 }
 
@@ -121,7 +129,7 @@ static void planner(
     int target_steps,
     double* target_traj,
     double* targetposeV,
-    // int curr_time,
+    int curr_time,
     double* action_ptr,
     int num_obj,
     double* object_traj, 
@@ -133,6 +141,13 @@ static void planner(
     int dX[NUMOFDIRS] = {-1, -1, -1,  0,  0,  1, 1, 1};
     int dY[NUMOFDIRS] = {-1,  0,  1, -1,  1, -1, 0, 1};
 
+    // TODO:  implement queue of goal poses
+    if(!got_goal){
+        for(int i=2;i>=0;i--){
+            goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
+        }
+        got_goal = true;
+    }
 
     double delta=0.1;
 
@@ -140,18 +155,23 @@ static void planner(
 
     mexPrintf("\n target steps: %d", target_steps);
     mexPrintf("\n curr_time: %d", curr_time);
-    mexPrintf("\n dist2obj: %f", dist_to_object);
-    mexPrintf("\n delta*dist: %f", delta*dist_to_object);
+    // mexPrintf("\n dist2obj: %f", dist_to_object);
+    // mexPrintf("\n delta*dist: %f", delta*dist_to_object);
 
-    int goalposeX = (int) target_traj[curr_time+(int)(delta*dist_to_object)];
+    // int goalposeX = (int) target_traj[curr_time+(int)(delta*dist_to_object)];
     // int goalposeY = (int) target_traj[curr_time+target_steps+(int)(delta*dist_to_object)];
+    if(goal_poses.empty()){
+        mexPrintf("\n %d, goal_poses is empty");
+        return;
+    }
+     mexPrintf("\n %d caught?",caught[goal_poses.size()-1]);
+    if(caught[goal_poses.size()-1] == 1) goal_poses.pop();
+    int goalposeX = (int) goal_poses.front().first;
+    int goalposeY = (int) goal_poses.front().second;
 
-    int goalposeX = (int) target_traj[target_steps-1];
-    int goalposeY = (int) target_traj[target_steps-1+target_steps];
 
     // int goalposeX = targetposeX;
     // int goalposeY = targetposeY;
-
 
     // if(dist_to_object<20 || (int)(*(&target_traj + 1) - target_traj)==0){
     //     int goalposeX = targetposeX;
@@ -189,7 +209,7 @@ static void planner(
     int newx, newy;
     vector<int> new_pose={robotposeX, robotposeY};
     bool found_path = false;
-    if(robotposeX!=goalposeX && robotposeY!=goalposeY){
+    if(robotposeX!=goalposeX || robotposeY!=goalposeY){
         while (!open.empty()) {
             listPair curr = *open.begin(); // remove s with the smallest f(s) from OPEN;
             open.erase(open.begin()); // remove s from OPEN
@@ -203,24 +223,24 @@ static void planner(
                 newx = i + dX[dir];
                 newy = j + dY[dir];
                 // mexPrintf("\n child %d, %d", newx, newy);
-
                 if (newx >= 1 && newx <= x_size && newy >= 1 && newy <= y_size)  //if new pose is within the map
                 {   
-                    // mexPrintf("\n opensize %d", open.size());      
+                    // mexPrintf("\n opensize %d", open.size());   
+                    // mexPrintf("\n goalpose is %d,%d", goalposeX, goalposeY);
+                    // mexPrintf("\n robotpose is %d,%d", newx, newy);
+                    // mexPrintf("collision? %d",collCheck(object_traj,num_obj,newx,newy,num_obj,obj_size,curr_time,target_steps));
                     if (newx==goalposeX && newy==goalposeY)  //if new pose is the goal pose
                     {
-                        // mexPrintf("\n 3");
                         grid[newx][newy].parent.first = i;
                         grid[newx][newy].parent.second = j;
                         new_pose= getPath(grid, goalposeX, goalposeY);
                         found_path=true;
                     }
-                    else if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh)) // if new pose is not in CLOSED and is valid
+                    else if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh) && !collCheck(object_traj,num_obj,newx,newy,num_obj,obj_size,curr_time,target_steps)) // if new pose is not in CLOSED and is valid
                     {
                         gNew = grid[i][j].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
                         hNew = (int)sqrt(((newx-goalposeX)*(newx-goalposeX) + (newy-goalposeY)*(newy-goalposeY)));
                         fNew = gNew + hNew;
-                        // mexPrintf("\n 4");
                         if (grid[newx][newy].g == INT_MAX || grid[newx][newy].g > gNew) //if g(s')>g(s)+c(s,s')
                         {
                             open.insert(make_pair(fNew, make_pair(newx, newy))); // insert s' in OPEN
