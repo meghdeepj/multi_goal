@@ -24,7 +24,7 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define NUMBER_TARGETS          prhs[9]
+#define NUMBER_TARGET           prhs[9]
 #define CAUGHT                  prhs[10]
 
 /* Output Arguments */
@@ -66,6 +66,7 @@ queue<pair<int, int>> goal_poses;
 
 bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* obj_size, int t, int steps) //return true if given pose hits dyn object
 {   
+    mexPrintf("\ncoll check");
     for (int i = 0; i < num_obj; i++){
         int* objPose = new int[2];
         objPose[0] = (int)object_traj[t+2*i*steps];
@@ -87,25 +88,6 @@ bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* 
     }
     return false;
 }
-
-// bool collCheck(int* objPose, int x, int y, int num, double* obj_size) //return true if given pose hits dyn object
-// {
-//     int szX = int(obj_size[0]);
-//     int szY = int(obj_size[1]);
-//     int curObX;
-//     int curObY;
-//     for (int i = 0; i < num; i++)
-//     {
-//         curObX = int(objPose[2 * i]);
-//         curObY = int(objPose[2 * i + 1]); //pass object position
-//         if(x > (curObX - szX/2)
-//             && x < (curObX + szX/2)
-//             && y > (curObY - szY / 2)
-//             && y < (curObY + szY / 2))
-//             return true;
-//     }
-//     return false;
-// }
 
 bool isValid(int x, int y, int x_size, int y_size, double* map, int collision_thresh){
     if(((int)map[GETMAPINDEX(x,y,x_size,y_size)] >= 0) && ((int)map[GETMAPINDEX(x,y,x_size,y_size)] < collision_thresh)){
@@ -150,8 +132,9 @@ static void planner(
     int curr_time,
     double* action_ptr,
     int num_obj,
-    double* object_traj, 
+    double* object_traj_set, 
     double* obj_size,
+    int num_tar,
     double* caught
     )
 {
@@ -161,7 +144,7 @@ static void planner(
 
     // TODO:  implement queue of goal poses
     if(!got_goal){
-        for(int i=2;i>=0;i--){
+        for(int i=num_tar-1;i>=0;i--){
             goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
         }
         got_goal = true;
@@ -301,11 +284,13 @@ static void planner(
 // 1st is a row vector <dx,dy> which corresponds to the action that the robot should make
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, const mxArray*prhs[] )
+        
 {
+    
     /* Check for proper number of arguments */
-    if (nrhs != 11) {
+    if (nrhs != 10) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
-                "Invalid # of args.");
+                "Six input arguments required.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
                 "One output argument required.");
@@ -362,10 +347,11 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
-    int num_tar = mxGetScalar(NUMBER_TARGETS);
+    int num_tar = mxGetScalar(NUMBER_TARGET);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
-    double* caught = mxGetPr(CAUGHT);
+    double* caught = mxGetPr(OBJECT_SIZE);
+
 
     /* Do the actual planning in a subroutine */
     planner(map, 
@@ -381,6 +367,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
             num_obj, 
             object_traj_set,
             obj_size,
+            num_tar,
             caught);
     // printf("DONE PLANNING!\n");
     return;   
