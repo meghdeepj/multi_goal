@@ -26,8 +26,7 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define NUMBER_TARGETS          prhs[9]
-#define CAUGHT                  prhs[10]
+#define CAUGHT                  prhs[9]
 
 /* Output Arguments */
 #define	ACTION_OUT              plhs[0]
@@ -313,23 +312,11 @@ static void planner(
                 pair<int, int> p = Path.front();
 
                 action_ptr[0] = p.first;
-                action_ptr[1] = p.second;
                 if(collCheck(object_traj_set,num_obj,p.first,p.second,num_obj,obj_size,curr_time,target_steps))
                 {
                     mexPrintf("\n next goal is %d,%d", p.first, p.second);
                     mexPrintf("\n curr_time is %d", curr_time);
                 }
-            }else{
-                action_ptr[0] = robotposeX;
-                action_ptr[1] = robotposeY;
-            }
-            return;
-        }else{
-            if(Path2d.size()>1){
-                Path2d.pop();
-                pair<int, int> p = Path2d.front();
-                action_ptr[0] = p.first;
-                action_ptr[1] = p.second;
                 // mexPrintf("\n 2d next goal is %d,%d", p.first, p.second);
                 // mexPrintf("\n curr_time is %d", curr_time);
             }else{
@@ -504,9 +491,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, const mxArray*prhs[] )
 {
     /* Check for proper number of arguments */
-    if (nrhs != 11) {
+    if (nrhs != 10) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
-                "Invalid # of args.");
+                "Six input arguments required.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
                 "One output argument required.");
@@ -563,10 +550,10 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
-    int num_tar = mxGetScalar(NUMBER_TARGETS);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
-    double* caught = mxGetPr(CAUGHT);
+    double* caught = mxGetPr(OBJECT_SIZE);
+
 
     /* Do the actual planning in a subroutine */
     planner(map, 

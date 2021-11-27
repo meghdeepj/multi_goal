@@ -21,7 +21,8 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define CAUGHT                  prhs[9]
+#define NUMBER_TARGET           prhs[9]
+#define CAUGHT                  prhs[10]
 
 
 
@@ -76,6 +77,7 @@ static void planner(
     int num_obj,
     double* object_traj_set, 
     double* obj_size,
+    int num_tar,
     double* caught
         )
 {
@@ -199,6 +201,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
+    int num_tar = mxGetScalar(NUMBER_TARGET);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
     double* caught = mxGetPr(OBJECT_SIZE);
@@ -218,6 +221,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
             num_obj, 
             object_traj_set,
             obj_size,
+            num_tar,
             caught);
     // printf("DONE PLANNING!\n");
     return;   
