@@ -66,6 +66,7 @@ queue<pair<int, int>> goal_poses;
 
 bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* obj_size, int t, int steps) //return true if given pose hits dyn object
 {   
+    mexPrintf("\ncoll check");
     for (int i = 0; i < num_obj; i++){
         int* objPose = new int[2];
         objPose[0] = (int)object_traj[t+2*i*steps];
@@ -87,25 +88,6 @@ bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* 
     }
     return false;
 }
-
-// bool collCheck(int* objPose, int x, int y, int num, double* obj_size) //return true if given pose hits dyn object
-// {
-//     int szX = int(obj_size[0]);
-//     int szY = int(obj_size[1]);
-//     int curObX;
-//     int curObY;
-//     for (int i = 0; i < num; i++)
-//     {
-//         curObX = int(objPose[2 * i]);
-//         curObY = int(objPose[2 * i + 1]); //pass object position
-//         if(x > (curObX - szX/2)
-//             && x < (curObX + szX/2)
-//             && y > (curObY - szY / 2)
-//             && y < (curObY + szY / 2))
-//             return true;
-//     }
-//     return false;
-// }
 
 bool isValid(int x, int y, int x_size, int y_size, double* map, int collision_thresh){
     if(((int)map[GETMAPINDEX(x,y,x_size,y_size)] >= 0) && ((int)map[GETMAPINDEX(x,y,x_size,y_size)] < collision_thresh)){
@@ -301,7 +283,9 @@ static void planner(
 // 1st is a row vector <dx,dy> which corresponds to the action that the robot should make
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, const mxArray*prhs[] )
+        
 {
+    
     /* Check for proper number of arguments */
     if (nrhs != 11) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
