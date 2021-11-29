@@ -26,7 +26,8 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define CAUGHT                  prhs[9]
+#define NUMBER_TARGET           prhs[9]
+#define CAUGHT                  prhs[10]
 
 /* Output Arguments */
 #define	ACTION_OUT              plhs[0]
@@ -292,6 +293,7 @@ static void planner(
     int num_obj,
     double* object_traj_set, 
     double* obj_size,
+    int num_tar,
     double* caught
     )
 {    
@@ -335,7 +337,7 @@ static void planner(
     int buffer_time = (int) 5*(double)MAX(x_size,y_size)/200;
 
     if(!got_goal){
-        for(int i=2;i>=0;i--){
+        for(int i=num_tar-1;i>=0;i--){
             goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
         }
         got_goal = true;
@@ -489,7 +491,9 @@ static void planner(
 // 1st is a row vector <dx,dy> which corresponds to the action that the robot should make
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, const mxArray*prhs[] )
+        
 {
+    
     /* Check for proper number of arguments */
     if (nrhs != 10) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
@@ -550,6 +554,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
+    int num_tar = mxGetScalar(NUMBER_TARGET);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
     double* caught = mxGetPr(OBJECT_SIZE);
@@ -569,6 +574,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
             num_obj, 
             object_traj_set,
             obj_size,
+            num_tar,
             caught);
     // printf("DONE PLANNING!\n");
     return;   

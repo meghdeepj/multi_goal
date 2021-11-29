@@ -321,7 +321,6 @@ static void planner(
     int goalposeX = (int) goal_poses.front().first;
     int goalposeY = (int) goal_poses.front().second;
 
-
     // int goalposeX = targetposeX;
     // int goalposeY = targetposeY;
 
