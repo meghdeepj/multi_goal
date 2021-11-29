@@ -41,8 +41,8 @@ pause(1.0);
 
 % robot can take at most as many steps as target takes
 while (true)
-    
-    %imagesc(envmap'); axis square; colorbar; colormap jet;
+    hold off;
+    imagesc(envmap'); axis square; colorbar; colormap jet; hold on;
     
     % call robot planner to find what they want to do
     t0 = clock;
