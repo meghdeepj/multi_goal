@@ -1,4 +1,4 @@
-map = imread('demo1.png');
+map = imread('demo2.png');
 map = rgb2gray(map);
 map = imrotate(map,-90);
 map = flip(map,2);
@@ -11,7 +11,7 @@ colormap jet;imagesc(map);
 dat = replace(string(map), ',', ', ');
 
 %dlmwrite('demo1.txt',map,'delimiter',' ,')
-writematrix(dat,'demo1.txt');
+writematrix(dat,'demo2.txt');
 
 %fid = fopen('demo1.txt','wt');
 %fprintf(fid, dat);
