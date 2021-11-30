@@ -15,17 +15,13 @@ class TrajectoryPredictor {
     vector<vector<pair<int,int>>> obstacle_traj;
     vector<vector<pair<int,int>>> observation;
 
-    TrajectoryPredictor(int num_obj, int horzn, double* obj_size)
+    void init(double *object_traj, int steps, int num_obj, int horzn, double* obj_size)
     {
       num_obs = num_obj;
       horizon = horzn;
       obs_size = obj_size;
       obstacle_traj = vector<vector<pair<int,int>>>(num_obs, vector<pair<int,int>>(horizon, make_pair(0,0)));
       observation = vector<vector<pair<int,int>>>(num_obs, vector<pair<int,int>>(2, make_pair(0,0)));
-    }
-
-    void init(double *object_traj, int steps)
-    {
       for(int i = 0; i < num_obs; i++)
       {
         observation[i][0].first = (int)object_traj[2*i*steps];
@@ -40,16 +36,21 @@ class TrajectoryPredictor {
     {
       for(int i = 0; i < num_obs; i++)
       {
-        observation[i][0].first = observation[i][1].first;
-        observation[i][0].second = observation[i][1].second;
+        observation[i][0].first = (int) object_traj[t-1+2*i*steps];
+        observation[i][0].second = (int) object_traj[t-1+(2*i+1)*steps];
         observation[i][1].first = (int) object_traj[t+2*i*steps];
         observation[i][1].second = (int) object_traj[t+(2*i+1)*steps];
+        // mexPrintf("obs %d %d %d %d\n", observation[0][0].first, observation[0][0].second, observation[0][1].first, observation[0][1].second);
+
       }
+
 
       for(int i = 0; i < num_obs; i++)
       {
         int dX = (observation[i][1].first - observation[i][0].first);
         int dY = (observation[i][1].second - observation[i][0].second);
+
+        mexPrintf("dx dy %d %d\n", dX, dY);
         int x_f=1, y_f=1;
         if(dX<0) x_f=-1;
         if(dY<0) y_f=-1;
@@ -86,6 +87,7 @@ class TrajectoryPredictor {
           obstacle_traj[i] = vector<pair<int,int>>(horizon, observation[i][1]);
         }
       }
+    // mexPrintf("obj traj %d %d\n", obstacle_traj[0][0].first, obstacle_traj[0][0].second);
     }
 
     bool check_plan(vector<pair<int,int>> plan, int idx)
@@ -106,6 +108,8 @@ class TrajectoryPredictor {
       int szY = int(obs_size[1]);
       int curObX;
       int curObY;
+      // mexPrintf("obj traj %d %d\n", obstacle_traj[0][0].first, obstacle_traj[0][0].second);
+
       for (int i = 0; i < num_obs; i++)
       {
         for(int j = 0; j < horizon; j++)
@@ -119,6 +123,7 @@ class TrajectoryPredictor {
             return true;
         }
       }
+    // mexPrintf("\ndetect %d %d %d %d %d %d", x, y, szX, szY, curObX, curObY);
     return false;
     }
 
