@@ -3,15 +3,8 @@
  * planner.c
  *
  *=================================================================*/
-#include <math.h>
-#include <time.h>
 #include <mex.h>
-#include <iostream>
-#include <queue>
-#include <vector>
-#include <stack>
-#include <unordered_map>
-#include <queue>
+#include "traj_pred.h"
 
 using namespace std;
 
@@ -79,6 +72,7 @@ typedef pair<int, pair<int, int>> listPair2d;
 
 queue<pair<int,int>> Path2d;
 queue<pair<int,int>> Path;
+vector<pair<int,int>> Path_vector;
 bool have_path = false, better_2dpath = false;
 vector<vector<cell2d>> grid2d;
 int path_size_2d = INT_MAX;
@@ -87,26 +81,6 @@ int trace_idx = 0;
 
 bool got_goal = false;
 queue<pair<int, int>> goal_poses;
-
-bool collCheck(double* object_traj, int num_obj, int x, int y, double* obj_size, int t, int steps) //return true if given pose hits dyn object
-{   
-    // mexPrintf("\n coll check");  
-    int szX = int(obj_size[0]);
-    int szY = int(obj_size[1]);
-    int curObX;
-    int curObY;
-    for (int j = 0; j < num_obj; j++)
-    {
-        curObX = (int)object_traj[t+2*j*steps];
-        curObY = (int)object_traj[t+(2*j+1)*steps]; //pass object position
-        if(x >= (curObX - szX/2)
-            && x <= (curObX + szX/2)
-            && y >= (curObY - szY / 2)
-            && y <= (curObY + szY / 2))
-            return true;
-    }
-    return false;
-}
 
 struct ArrayHasher {
     std::size_t operator()(const std::array<int, 3>& a) const {
@@ -156,6 +130,7 @@ vector<int> getPath(unordered_map<array<int,3> , cell, ArrayHasher >& grid, int 
              && grid[{row,col,t}].parent[1] == col && grid[{row,col,t}].parent[2] == t))
     {
         Path.push(make_pair(row, col));
+        Path_vector.push_back(make_pair(row, col));
         int temp_row = grid[{row,col,t}].parent[0];
         int temp_col = grid[{row,col,t}].parent[1];
         int temp_time = grid[{row,col,t}].parent[2];
@@ -185,7 +160,7 @@ vector<int> search_2d(
     int target_steps
     )
 {
-    mexPrintf("\n 2d Search started");
+
     int dX[NUMOFDIRS] = {-1, -1, -1,  0,  0,  1, 1, 1};
     int dY[NUMOFDIRS] = {-1,  0,  1, -1,  1, -1, 0, 1};
     int i, j, epsilon=1;
@@ -221,13 +196,12 @@ vector<int> search_2d(
     open2d.push(make_pair(0, make_pair(targetposeX, targetposeY)));
     opened[targetposeX][targetposeY] = true;
 
-    // mexPrintf("\n 1");
     int newx, newy;
     vector<int> new_pose={robotposeX, robotposeY};
     bool found_path = false;
     if(robotposeX!=goalposeX || robotposeY!=goalposeY){
         while (!open2d.empty()) {
-            // mexPrintf("\n 2");
+
             bool next = false;
             while(!next){           
                 listPair2d curr = open2d.top();
@@ -242,23 +216,19 @@ vector<int> search_2d(
             int gNew, hNew, fNew;
             if (i==goalposeX && j==goalposeY)                                                                   // if new pose is the goal pose
             {
-                mexPrintf("\n found path 2d");
                 cost_2d=grid2d[i][j].g;
                 new_pose= getPath2d(grid2d, goalposeX, goalposeY);
                 found_path=true;
             }
             for(int dir = 0; dir < NUMOFDIRS; dir++)
             {
-                // mexPrintf("\n 3");
                 newx = i + dX[dir];
                 newy = j + dY[dir];
 
                 if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size)                                   //if new pose is within the map
                 {   
-                    // mexPrintf("\n e");
                     if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh))      // if new pose is not in CLOSED and is valid
                     {
-                        // mexPrintf("\n 4");
                         gNew = grid2d[i][j].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
                         hNew = 0;                                                                               // Uninformed search for max coverage
                         fNew = gNew + hNew;
@@ -298,8 +268,9 @@ static void planner(
     double* caught
     )
 {   
-    clock_t tStart = clock();
 
+    TrajectoryPredictor traj(num_obj, 25, obj_size);
+    traj.init(object_traj_set, target_steps);
     if(curr_time==0){                                                                                               // initialize variables for new map
         have_path=false;
         Path = queue<pair<int,int>>();
@@ -309,6 +280,7 @@ static void planner(
         better_2dpath = false;
         trace_idx = target_steps-1;
     }
+    
     if(have_path){
         if(!better_2dpath)
         {
@@ -317,22 +289,42 @@ static void planner(
                 pair<int, int> p = Path.front();
                 // mexPrintf("\n next goal is %d,%d", p.first, p.second);
                 //     mexPrintf("\n curr_time is %d", curr_time);
-                action_ptr[0] = p.first;
-                action_ptr[1] = p.second;
-                if(collCheck(object_traj_set,num_obj,p.first,p.second,obj_size,curr_time,target_steps))
+                traj.update(object_traj_set, target_steps, curr_time);
+                if(traj.check_plan(Path_vector, Path_vector.size() - Path.size())==false)
                 {
-                    mexPrintf("\n next goal is %d,%d", p.first, p.second);
-                    mexPrintf("\n curr_time is %d", curr_time);
+                    mexPrintf("\n obstacle predicted, replanning");
+                    have_path=false;
+                    for(int i=num_tar-1;i>=0;i--){
+                        // if(caught[i]==0)
+                            goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
+                        // mexPrintf("\n caught? %d: %.3f", i,caught[i]);
+
+                    }
+                    action_ptr[0] = robotposeX;
+                    action_ptr[1] = robotposeY;
+                    Path = queue<pair<int,int>>();
+                    Path2d = queue<pair<int,int>>();
+                    path_size_2d=INT_MAX;
+                    cost_2d=INT_MAX;
+                    better_2dpath = false;
+                    mexPrintf("\n targets left: %d", goal_poses.size());
+                    trace_idx = target_steps-1;
+                }else{
+                    action_ptr[0] = p.first;
+                    action_ptr[1] = p.second;
                 }
-                // mexPrintf("\n 2d next goal is %d,%d", p.first, p.second);
-                // mexPrintf("\n curr_time is %d", curr_time);
+
             }else{
-                action_ptr[0] = target_traj[trace_idx];
-                action_ptr[1] = target_traj[trace_idx+target_steps];
-                trace_idx--;
+                action_ptr[0] = robotposeX;
+                action_ptr[1] = robotposeY;
             }
-            return;
+        }else{
+            action_ptr[0] = target_traj[trace_idx];
+            action_ptr[1] = target_traj[trace_idx+target_steps];
+            trace_idx--;
         }
+        mexPrintf("\n next goal is %.3f,%.3f", action_ptr[0], action_ptr[1]);
+        return;
     }
     // 9-connected grid (for 3D)
     int dX[NUMOFDIRS+1] = {0, -1, -1, -1,  0,  0,  1, 1, 1};
@@ -347,10 +339,12 @@ static void planner(
         }
         got_goal = true;
     }
+    
     int goalposeX = (int) goal_poses.front().first;
     int goalposeY = (int) goal_poses.front().second;
     vector<int> new_pose={robotposeX, robotposeY};
-    mexPrintf("\n goal poses: %d", goal_poses.size());
+
+    clock_t tStart = clock();
     int num_expanded = 0;
     while(!goal_poses.empty()){
         mexPrintf("\n new run");
@@ -406,8 +400,8 @@ static void planner(
             }
             closed[{i,j,k}] = true;                                                                                         // insert s into CLOSED
 
-            // int time_elapsed = buffer_time + (int)ceil((clock() - tStart)/CLOCKS_PER_SEC);
-            int time_elapsed = (int) ceil((clock() - tStart)/CLOCKS_PER_SEC);
+            // int time_elapsed = buffer_time + (int)((clock() - tStart)/CLOCKS_PER_SEC);
+            int time_elapsed = (int)((clock() - tStart)/CLOCKS_PER_SEC);
             int gNew, hNew, fNew;
             num_expanded++;
             // mexPrintf("target_x: %d, target_y: %d \n",target_x, target_y);
@@ -428,7 +422,7 @@ static void planner(
                 if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size && curr_time+newt+time_elapsed<=target_steps)  //if new pose is within the map
                 {                      
                     // if new pose is not in CLOSED and is valid
-                    if( (closed.find({newx,newy,newt}) == closed.end() || closed[{newx,newy,newt}]==false) && isValid(newx,newy,x_size,y_size,map,collision_thresh) && !collCheck(object_traj_set,num_obj,newx,newy,obj_size,curr_time+k+time_elapsed,target_steps)) 
+                    if( (closed.find({newx,newy,newt}) == closed.end() || closed[{newx,newy,newt}]==false) && isValid(newx,newy,x_size,y_size,map,collision_thresh) && !traj.coll_check(newx,newy)) 
                     {
                         gNew = grid[{i,j,k}].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
                         hNew = (int) epsilon*grid2d[newx][newy].g;                                                                // use heuristic from 2D backward djikstra
@@ -478,7 +472,6 @@ static void planner(
     have_path=true;
     mexPrintf("\n robot: %d %d", robotposeX, robotposeY);
     mexPrintf("\n next goal is %d,%d \n", new_pose[0], new_pose[1]);
-    mexPrintf("\n path size: %d \n", Path.size());
     robotposeX = Path.front().first;
     robotposeY = Path.front().second;
     action_ptr[0] = robotposeX;

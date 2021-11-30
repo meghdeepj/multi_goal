@@ -24,7 +24,7 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define NUMBER_TARGETS          prhs[9]
+#define NUMBER_TARGET           prhs[9]
 #define CAUGHT                  prhs[10]
 
 /* Output Arguments */
@@ -46,12 +46,12 @@ using namespace std;
 
 typedef pair<int, pair<int, int> > listPair;
 
-struct cell {
+struct cell2d{
 
     pair<int,int> parent;
 
     int f, g, h;
-    cell()
+    cell2d()
         : parent(-1, -1)
         , f(-1)
         , g(-1)
@@ -59,6 +59,31 @@ struct cell {
     {
     }
 };
+
+struct cell{
+
+    vector<int> parent;
+    int f, g, h;
+
+    cell()
+        : parent({-1, -1, -1})
+        , f(-1)
+        , g(-1)
+        , h(-1)
+    {
+    }
+};
+
+typedef pair<int, vector<int>> listPair;
+typedef pair<int, pair<int, int>> listPair2d;
+
+queue<pair<int,int>> Path2d;
+queue<pair<int,int>> Path;
+bool have_path = false, better_2dpath = false;
+vector<vector<cell2d>> grid2d;
+int path_size_2d = INT_MAX;
+int cost_2d = INT_MAX;
+int trace_idx = 0;
 
 bool got_goal = false;
 queue<pair<int, int>> goal_poses;
@@ -87,6 +112,27 @@ bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* 
         }
     }
     return false;
+}
+
+vector<int> getPath2d(vector<vector<cell2d>> &grid, int goalposeX, int goalposeY)
+{
+    int row = goalposeX;
+    int col = goalposeY;
+    path_size_2d = 0;
+ 
+    while (!(grid[row][col].parent.first == row
+             && grid[row][col].parent.second == col)) {
+        Path2d.push(make_pair(row, col));
+        int temp_row = grid[row][col].parent.first;
+        int temp_col = grid[row][col].parent.second;
+        row = temp_row;
+        col = temp_col;
+        path_size_2d++;
+    }
+    Path2d.push(make_pair(row, col));
+ 
+    pair<int, int> p = Path2d.front();
+    return {p.first, p.second};
 }
 
 bool isValid(int x, int y, int x_size, int y_size, double* map, int collision_thresh){
@@ -118,6 +164,111 @@ vector<int> getPath(vector<vector<cell>> &grid, int goalposeX, int goalposeY)
     return {p.first, p.second};
 }
 
+vector<int> search_2d(
+    double* map, 
+    int x_size, 
+    int y_size, 
+    int collision_thresh, 
+    int robotposeX, 
+    int robotposeY, 
+    int curr_time,  
+    int targetposeX, 
+    int targetposeY,
+    double* targetposeV,
+    int num_obj,
+    double* object_traj, 
+    double* obj_size,
+    int target_steps
+    )
+{
+
+    int dX[NUMOFDIRS] = {-1, -1, -1,  0,  0,  1, 1, 1};
+    int dY[NUMOFDIRS] = {-1,  0,  1, -1,  1, -1, 0, 1};
+    int i, j, epsilon=1;
+
+    int goalposeX = robotposeX;
+    int goalposeY = robotposeY;
+
+    vector<vector<bool>> closed(x_size+1, vector<bool> (y_size+1, false));
+    vector<vector<bool>> opened(x_size+1, vector<bool> (y_size+1, false));
+    grid2d.clear();
+    grid2d.resize(x_size+1, vector<cell2d>(y_size+1));
+    for (i = 1; i <=x_size; i++) {
+        for (j = 1; j <=y_size; j++) {
+            grid2d[i][j].f = INT_MAX;
+            grid2d[i][j].g = INT_MAX;
+            grid2d[i][j].h = INT_MAX;
+            grid2d[i][j].parent = make_pair(-1, -1);
+        }
+    }
+
+    robotposeX = (int) targetposeX; 
+    robotposeY = (int) targetposeY;
+
+    i=robotposeX, j=robotposeY;
+    // set<listPair2d> open2d;
+    priority_queue<listPair2d, vector<listPair2d>, greater<listPair2d>> open2d;
+
+    // all potential goal poses (from halfway to end) have g=0 (starting state for backwards search)
+    grid2d[targetposeX][targetposeY].f = 0;
+    grid2d[targetposeX][targetposeY].g = 0;
+    grid2d[targetposeX][targetposeY].h = 0;
+    grid2d[targetposeX][targetposeY].parent = make_pair(i, j);
+    open2d.push(make_pair(0, make_pair(targetposeX, targetposeY)));
+    opened[targetposeX][targetposeY] = true;
+
+    int newx, newy;
+    vector<int> new_pose={robotposeX, robotposeY};
+    bool found_path = false;
+    if(robotposeX!=goalposeX || robotposeY!=goalposeY){
+        while (!open2d.empty()) {
+
+            bool next = false;
+            while(!next){           
+                listPair2d curr = open2d.top();
+                open2d.pop();                                                                                   // remove s from OPEN
+                i = curr.second.first;
+                j = curr.second.second;
+                if(closed[i][j]==false){
+                    next=true;
+                }
+            }
+            closed[i][j] = true;                                                                                // insert s into CLOSED
+            int gNew, hNew, fNew;
+            if (i==goalposeX && j==goalposeY)                                                                   // if new pose is the goal pose
+            {
+                cost_2d=grid2d[i][j].g;
+                new_pose= getPath2d(grid2d, goalposeX, goalposeY);
+                found_path=true;
+            }
+            for(int dir = 0; dir < NUMOFDIRS; dir++)
+            {
+                newx = i + dX[dir];
+                newy = j + dY[dir];
+
+                if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size)                                   //if new pose is within the map
+                {   
+                    if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh) && !collCheck(object_traj,num_obj,newx,newy,num_obj,obj_size,curr_time,target_steps))      // if new pose is not in CLOSED and is valid
+                    {
+                        gNew = grid2d[i][j].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
+                        hNew = 0;                                                                               // Uninformed search for max coverage
+                        fNew = gNew + hNew;
+                        if (grid2d[newx][newy].g == INT_MAX || grid2d[newx][newy].g > gNew)                     // if g(s')>g(s)+c(s,s')
+                        {
+                            open2d.push(make_pair(fNew, make_pair(newx,newy)));
+                            grid2d[newx][newy].f = fNew;  
+                            grid2d[newx][newy].g = gNew;                                                       // update g(s')
+                            grid2d[newx][newy].h = hNew;
+                            grid2d[newx][newy].parent = make_pair(i, j);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    mexPrintf("\n 2d Search ended");
+    return new_pose;
+}
 
 static void planner(
     double* map,
@@ -132,8 +283,9 @@ static void planner(
     int curr_time,
     double* action_ptr,
     int num_obj,
-    double* object_traj, 
+    double* object_traj_set, 
     double* obj_size,
+    int num_tar,
     double* caught
     )
 {
@@ -143,7 +295,7 @@ static void planner(
 
     // TODO:  implement queue of goal poses
     if(!got_goal){
-        for(int i=2;i>=0;i--){
+        for(int i=num_tar-1;i>=0;i--){
             goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
         }
         got_goal = true;
@@ -168,7 +320,6 @@ static void planner(
     if(caught[goal_poses.size()-1] == 1) goal_poses.pop();
     int goalposeX = (int) goal_poses.front().first;
     int goalposeY = (int) goal_poses.front().second;
-
 
     // int goalposeX = targetposeX;
     // int goalposeY = targetposeY;
@@ -287,9 +438,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 {
     
     /* Check for proper number of arguments */
-    if (nrhs != 11) {
+    if (nrhs != 10) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
-                "Invalid # of args.");
+                "Six input arguments required.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
                 "One output argument required.");
@@ -346,10 +497,11 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
-    int num_tar = mxGetScalar(NUMBER_TARGETS);
+    int num_tar = mxGetScalar(NUMBER_TARGET);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
-    double* caught = mxGetPr(CAUGHT);
+    double* caught = mxGetPr(OBJECT_SIZE);
+
 
     /* Do the actual planning in a subroutine */
     planner(map, 
@@ -365,6 +517,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
             num_obj, 
             object_traj_set,
             obj_size,
+            num_tar,
             caught);
     // printf("DONE PLANNING!\n");
     return;   
