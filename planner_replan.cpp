@@ -88,30 +88,6 @@ int trace_idx = 0;
 bool got_goal = false;
 queue<pair<int, int>> goal_poses;
 
-bool collCheck(double* object_traj, int num_obj, int x, int y, int num, double* obj_size, int t, int steps) //return true if given pose hits dyn object
-{   
-    for (int i = 0; i < num_obj; i++){
-        int* objPose = new int[2];
-        objPose[0] = (int)object_traj[t+2*i*steps];
-        objPose[1] = (int)object_traj[t+(2*i+1)*steps];   
-        int szX = int(obj_size[0]);
-        int szY = int(obj_size[1]);
-        int curObX;
-        int curObY;
-        for (int i = 0; i < num; i++)
-        {
-            curObX = int(objPose[2 * i]);
-            curObY = int(objPose[2 * i + 1]); //pass object position
-            if(x > (curObX - szX/2)
-                && x < (curObX + szX/2)
-                && y > (curObY - szY / 2)
-                && y < (curObY + szY / 2))
-                return true;
-        }
-    }
-    return false;
-}
-
 struct ArrayHasher {
     std::size_t operator()(const std::array<int, 3>& a) const {
         std::size_t h = 0;
