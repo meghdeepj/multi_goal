@@ -4,6 +4,7 @@
 #include <queue>
 #include <vector>
 #include <stack>
+#include <algorithm>
 #include <unordered_map>
 #include <queue>
 
@@ -87,23 +88,29 @@ class TrajectoryPredictor {
       }
     }
 
-    bool check_plan()
-
-    bool coll_check(int x, int y, int num, double* obj_size, int t, int steps) //return true if given pose hits dyn object
-    {   
-      for(int i = 0; i < num_obs; i++)
+    bool check_plan(vector<pair<int,int>> plan, int idx)
+    {
+      int lookahead = horizon + (int) max(obs_size[0], obs_size[1]);
+      for(int i = idx; i < min(idx+lookahead, (int)plan.size()); i++)
       {
-        int* objPose = new int[2];
-        objPose[0] = (int)object_traj[t+2*i*steps];
-        objPose[1] = (int)object_traj[t+(2*i+1)*steps];   
-        int szX = int(obj_size[0]);
-        int szY = int(obj_size[1]);
-        int curObX;
-        int curObY;
-        for (int i = 0; i < num; i++)
+        if(coll_check(plan[i].first, plan[i].second))
+          return false;
+      }
+      return true;
+    }
+
+    bool coll_check(int x, int y) //return true if given pose hits dyn object
+    {   
+      int szX = int(obj_size[0]);
+      int szY = int(obj_size[1]);
+      int curObX;
+      int curObY;
+      for (int i = 0; i < num_obj; i++)
+      {
+        for(int j = 0; j < horizon; j++)
         {
-          curObX = int(objPose[2 * i]);
-          curObY = int(objPose[2 * i + 1]); //pass object position
+          curObX = (int)obstacle_traj[i][j].first;
+          curObY = (int)obstacle_traj[i][j].second; //pass object position
           if(x > (curObX - szX/2)
             && x < (curObX + szX/2)
             && y > (curObY - szY / 2)
@@ -111,7 +118,7 @@ class TrajectoryPredictor {
             return true;
         }
       }
-      return false;
+    return false;
     }
 
   private:
@@ -122,4 +129,4 @@ class TrajectoryPredictor {
     
 
 
-};w
+};

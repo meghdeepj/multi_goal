@@ -97,8 +97,8 @@ bool collCheck(double* object_traj, int num_obj, int x, int y, double* obj_size,
     int curObY;
     for (int j = 0; j < num_obj; j++)
     {
-        curObX = (int)object_traj[t+2*j*steps];
-        curObY = (int)object_traj[t+(2*j+1)*steps]; //pass object position
+        curObX = (int)object_traj[t+2*i*steps];
+        curObY = (int)object_traj[t+(2*i+1)*steps]; //pass object position
         if(x > (curObX - szX/2)
             && x < (curObX + szX/2)
             && y > (curObY - szY / 2)
@@ -317,7 +317,7 @@ static void planner(
                 //     mexPrintf("\n curr_time is %d", curr_time);
                 action_ptr[0] = p.first;
                 action_ptr[1] = p.second;
-                if(collCheck(object_traj_set,num_obj,p.first,p.second,obj_size,curr_time,target_steps))
+                if(collCheck(object_traj_set,num_obj,p.first,p.second,num_obj,obj_size,curr_time,target_steps))
                 {
                     mexPrintf("\n next goal is %d,%d", p.first, p.second);
                     mexPrintf("\n curr_time is %d", curr_time);
@@ -477,7 +477,6 @@ static void planner(
     have_path=true;
     mexPrintf("\n robot: %d %d", robotposeX, robotposeY);
     mexPrintf("\n next goal is %d,%d \n", new_pose[0], new_pose[1]);
-    mexPrintf("\n path size: %d \n", Path.size());
     robotposeX = Path.front().first;
     robotposeY = Path.front().second;
     action_ptr[0] = robotposeX;
