@@ -90,7 +90,8 @@ class TrajectoryPredictor {
 
     bool check_plan(vector<pair<int,int>> plan, int idx)
     {
-      int lookahead = horizon + (int) max(obs_size[0], obs_size[1]);
+      // int lookahead = horizon + (int) max(obs_size[0], obs_size[1]);
+      int lookahead = horizon;
       for(int i = idx; i < min(idx+lookahead, (int)plan.size()); i++)
       {
         if(coll_check(plan[i].first, plan[i].second))
@@ -101,11 +102,11 @@ class TrajectoryPredictor {
 
     bool coll_check(int x, int y) //return true if given pose hits dyn object
     {   
-      int szX = int(obj_size[0]);
-      int szY = int(obj_size[1]);
+      int szX = int(obs_size[0]);
+      int szY = int(obs_size[1]);
       int curObX;
       int curObY;
-      for (int i = 0; i < num_obj; i++)
+      for (int i = 0; i < num_obs; i++)
       {
         for(int j = 0; j < horizon; j++)
         {

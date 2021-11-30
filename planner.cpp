@@ -99,10 +99,10 @@ bool collCheck(double* object_traj, int num_obj, int x, int y, double* obj_size,
     {
         curObX = (int)object_traj[t+2*j*steps];
         curObY = (int)object_traj[t+(2*j+1)*steps]; //pass object position
-        if(x > (curObX - szX/2)
-            && x < (curObX + szX/2)
-            && y > (curObY - szY / 2)
-            && y < (curObY + szY / 2))
+        if(x >= (curObX - szX/2)
+            && x <= (curObX + szX/2)
+            && y >= (curObY - szY / 2)
+            && y <= (curObY + szY / 2))
             return true;
     }
     return false;
@@ -297,7 +297,9 @@ static void planner(
     int num_tar,
     double* caught
     )
-{    
+{   
+    clock_t tStart = clock();
+
     if(curr_time==0){                                                                                               // initialize variables for new map
         have_path=false;
         Path = queue<pair<int,int>>();
@@ -349,7 +351,6 @@ static void planner(
     int goalposeY = (int) goal_poses.front().second;
     vector<int> new_pose={robotposeX, robotposeY};
     mexPrintf("\n goal poses: %d", goal_poses.size());
-    clock_t tStart = clock();
     int num_expanded = 0;
     while(!goal_poses.empty()){
         mexPrintf("\n new run");
@@ -405,8 +406,8 @@ static void planner(
             }
             closed[{i,j,k}] = true;                                                                                         // insert s into CLOSED
 
-            // int time_elapsed = buffer_time + (int)((clock() - tStart)/CLOCKS_PER_SEC);
-            int time_elapsed = (int)((clock() - tStart)/CLOCKS_PER_SEC);
+            // int time_elapsed = buffer_time + (int)ceil((clock() - tStart)/CLOCKS_PER_SEC);
+            int time_elapsed = (int) ceil((clock() - tStart)/CLOCKS_PER_SEC);
             int gNew, hNew, fNew;
             num_expanded++;
             // mexPrintf("target_x: %d, target_y: %d \n",target_x, target_y);

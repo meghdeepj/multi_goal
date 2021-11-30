@@ -227,7 +227,7 @@ vector<int> search_2d(
 
                 if (newx >= 1 && newx <=x_size && newy >= 1 && newy <=y_size)                                   //if new pose is within the map
                 {   
-                    if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh) && !collCheck(object_traj,num_obj,newx,newy,num_obj,obj_size,curr_time,target_steps))      // if new pose is not in CLOSED and is valid
+                    if(closed[newx][newy]==false && isValid(newx,newy,x_size,y_size,map,collision_thresh))      // if new pose is not in CLOSED and is valid
                     {
                         gNew = grid2d[i][j].g + (int)map[GETMAPINDEX(newx,newy,x_size,y_size)];
                         hNew = 0;                                                                               // Uninformed search for max coverage
@@ -269,7 +269,7 @@ static void planner(
     )
 {   
 
-    traj = TrajectoryPredictor(num_obj, 25, obj_size);
+    TrajectoryPredictor traj(num_obj, 25, obj_size);
     traj.init(object_traj_set, target_steps);
     if(curr_time==0){                                                                                               // initialize variables for new map
         have_path=false;
@@ -292,10 +292,13 @@ static void planner(
                 traj.update(object_traj_set, target_steps, curr_time);
                 if(traj.check_plan(Path_vector, Path_vector.size() - Path.size())==false)
                 {
+                    mexPrintf("\n obstacle predicted, replanning");
                     have_path=false;
                     for(int i=num_tar-1;i>=0;i--){
-                        if(caught[i]==0)
+                        // if(caught[i]==0)
                             goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
+                        // mexPrintf("\n caught? %d: %.3f", i,caught[i]);
+
                     }
                     action_ptr[0] = robotposeX;
                     action_ptr[1] = robotposeY;
@@ -304,15 +307,11 @@ static void planner(
                     path_size_2d=INT_MAX;
                     cost_2d=INT_MAX;
                     better_2dpath = false;
+                    mexPrintf("\n targets left: %d", goal_poses.size());
                     trace_idx = target_steps-1;
                 }else{
                     action_ptr[0] = p.first;
                     action_ptr[1] = p.second;
-                }
-                if(collCheck(object_traj_set,num_obj,p.first,p.second,num_obj,obj_size,curr_time,target_steps))
-                {
-                    mexPrintf("\n next goal is %d,%d", p.first, p.second);
-                    mexPrintf("\n curr_time is %d", curr_time);
                 }
 
             }else{
@@ -324,6 +323,7 @@ static void planner(
             action_ptr[1] = target_traj[trace_idx+target_steps];
             trace_idx--;
         }
+        mexPrintf("\n next goal is %.3f,%.3f", action_ptr[0], action_ptr[1]);
         return;
     }
     // 9-connected grid (for 3D)
