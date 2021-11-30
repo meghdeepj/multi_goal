@@ -13,6 +13,9 @@
 #include <unordered_map>
 #include <queue>
 
+#include "task_planner.h"
+
+
 using namespace std;
 
 /* Input Arguments */
@@ -81,12 +84,13 @@ queue<pair<int,int>> Path2d;
 queue<pair<int,int>> Path;
 bool have_path = false, better_2dpath = false;
 vector<vector<cell2d>> grid2d;
+queue<pair<int,int>> goal_poses;
+
 int path_size_2d = INT_MAX;
 int cost_2d = INT_MAX;
 int trace_idx = 0;
 
 bool got_goal = false;
-queue<pair<int, int>> goal_poses;
 
 bool collCheck(double* object_traj, int num_obj, int x, int y, double* obj_size, int t, int steps) //return true if given pose hits dyn object
 {   
@@ -331,6 +335,11 @@ static void planner(
                 action_ptr[1] = target_traj[trace_idx+target_steps];
                 trace_idx--;
             }
+            for(int i=num_tar-1;i>=0;i--){
+                // if(caught[i]==0)
+                
+                // mexPrintf("\n caught? %d: %.3f", i,caught[i]);
+            }
             return;
         }
     }
@@ -341,9 +350,23 @@ static void planner(
     double epsilon = 2;
     int buffer_time = (int) 5*(double)MAX(x_size,y_size)/200;
 
+    queue<pair<int,int>> goals; 
     if(!got_goal){
+        vector<int> start_point={robotposeX,robotposeY};  
+        vector<pair<int,int>> results;
+
         for(int i=num_tar-1;i>=0;i--){
-            goal_poses.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
+            goals.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
+        }
+
+        Taskplanner task(start_point,goals);
+        task.euclidean();
+        results=task.computeorder();
+        mexPrintf("\n order is :");
+        for(int i=0;i<results.size();i++)
+        {
+            mexPrintf(" (%d,%d)\n", results[i].first, results[i].second);
+            goal_poses.push(results[i]);
         }
         got_goal = true;
     }
@@ -352,6 +375,10 @@ static void planner(
     vector<int> new_pose={robotposeX, robotposeY};
     mexPrintf("\n goal poses: %d", goal_poses.size());
     int num_expanded = 0;
+    if(goal_poses.empty()){
+        mexPrintf("\n goal poses empty");
+        goal_poses = goals;
+    }
     while(!goal_poses.empty()){
         mexPrintf("\n new run");
         double delta=0.1;
