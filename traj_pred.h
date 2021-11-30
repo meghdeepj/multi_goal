@@ -112,10 +112,10 @@ class TrajectoryPredictor {
         {
           curObX = (int)obstacle_traj[i][j].first;
           curObY = (int)obstacle_traj[i][j].second; //pass object position
-          if(x > (curObX - szX/2)
-            && x < (curObX + szX/2)
-            && y > (curObY - szY / 2)
-            && y < (curObY + szY / 2))
+          if(x >= (curObX - szX/2)
+            && x <= (curObX + szX/2)
+            && y >= (curObY - szY / 2)
+            && y <= (curObY + szY / 2))
             return true;
         }
       }
