@@ -50,7 +50,7 @@ class TrajectoryPredictor {
         int dX = (observation[i][1].first - observation[i][0].first);
         int dY = (observation[i][1].second - observation[i][0].second);
 
-        mexPrintf("dx dy %d %d\n", dX, dY);
+        // mexPrintf("dx dy %d %d\n", dX, dY);
         int x_f=1, y_f=1;
         if(dX<0) x_f=-1;
         if(dY<0) y_f=-1;
@@ -61,7 +61,7 @@ class TrajectoryPredictor {
           for(int j = 0; j < horizon; j++)
           {
             obstacle_traj[i][j] = make_pair(x, y);
-            x += x_f;
+            x += dX;
           }
         }
         else if(dX == 0 && dY != 0)
@@ -70,7 +70,7 @@ class TrajectoryPredictor {
           for(int j = 0; j < horizon; j++)
           {
             obstacle_traj[i][j] = make_pair(observation[i][1].first, y);
-            y += y_f;
+            y += dY;
           }
         }
         else if(dX != 0 && dY == 0)
@@ -79,7 +79,7 @@ class TrajectoryPredictor {
           for(int j = 0; j < horizon; j++)
           {
             obstacle_traj[i][j] = make_pair(x, observation[i][1].second);
-            x += x_f;
+            x += dX;
           }
         }
         else
@@ -94,16 +94,20 @@ class TrajectoryPredictor {
     {
       // int lookahead = horizon + (int) max(obs_size[0], obs_size[1]);
       int lookahead = horizon;
+      int t = 0;
       for(int i = idx; i < min(idx+lookahead, (int)plan.size()); i++)
       {
-        if(coll_check(plan[i].first, plan[i].second))
+        if(coll_check(plan[i].first, plan[i].second, t))
           return false;
+        t++;
       }
       return true;
     }
 
-    bool coll_check(int x, int y) //return true if given pose hits dyn object
-    {   
+    bool coll_check(int x, int y, int t) //return true if given pose hits dyn object
+    { 
+      if(t >= horizon)
+        return false;
       int szX = int(obs_size[0]);
       int szY = int(obs_size[1]);
       int curObX;
@@ -112,16 +116,13 @@ class TrajectoryPredictor {
 
       for (int i = 0; i < num_obs; i++)
       {
-        for(int j = 0; j < horizon; j++)
-        {
-          curObX = (int)obstacle_traj[i][j].first;
-          curObY = (int)obstacle_traj[i][j].second; //pass object position
+          curObX = (int)obstacle_traj[i][t].first;
+          curObY = (int)obstacle_traj[i][t].second; //pass object position
           if(x >= (curObX - szX/2)
             && x <= (curObX + szX/2)
             && y >= (curObY - szY / 2)
             && y <= (curObY + szY / 2))
             return true;
-        }
       }
     // mexPrintf("\ndetect %d %d %d %d %d %d", x, y, szX, szY, curObX, curObY);
     return false;
