@@ -274,7 +274,7 @@ static void planner(
 {   
     if(curr_time==0){                                                                                               // initialize variables for new map
         have_path=false;
-        traj.init(object_traj_set, target_steps, num_obj, 35, obj_size);
+        traj.init(object_traj_set, target_steps, num_obj, 40, obj_size);
 
         Path = queue<pair<int,int>>();
         Path2d = queue<pair<int,int>>();
