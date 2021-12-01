@@ -24,8 +24,15 @@ class Taskplanner
             this->goal_pose = goal_pose;
         }
 
+        // double calc1 (pair<int,int> in1,pair<int,int> in2)
+        // {
+        //     return sqrt(pow((in1.first-in2.first),2)+pow((in1.second-in2.second),2));
+        // }
+
         double calc1 (pair<int,int> in1,pair<int,int> in2)
         {
+            // return search_2d(map,x_size,y_size,collision_thresh,in2.first,in2.second,curr_time,in1.first,in1.second,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
+
             return sqrt(pow((in1.first-in2.first),2)+pow((in1.second-in2.second),2));
         }
 

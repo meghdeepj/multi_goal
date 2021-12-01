@@ -147,7 +147,7 @@ vector<int> getPath(unordered_map<array<int,3> , cell, ArrayHasher >& grid, int 
     return {p.first, p.second};
 }
 
-vector<int> search_2d(
+int search_2d(
     double* map, 
     int x_size, 
     int y_size, 
@@ -250,7 +250,7 @@ vector<int> search_2d(
         }
     }
     mexPrintf("\n 2d Search ended");
-    return new_pose;
+    return Path2d.size();
 }
 
 static void planner(
@@ -372,13 +372,14 @@ static void planner(
         bool path_2d = false;
 
         stack<pair<int,int>> Path_dyn;
+        // Path2d.clear();
         vector<int> new_pose2d={robotposeX, robotposeY};
         goalposeX = (int) goal_poses.front().first;
         goalposeY = (int) goal_poses.front().second;
         mexPrintf("\n targets left: %d", goal_poses.size());
         mexPrintf("\n robotpose is %d,%d", robotposeX, robotposeY);
         mexPrintf("\n goalpose is %d,%d", goalposeX, goalposeY);
-        new_pose2d = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
+        search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
 
         unordered_map<array<int,3> , cell, ArrayHasher >  grid;
         unordered_map<array<int,3> , bool, ArrayHasher >  closed;
@@ -474,7 +475,7 @@ static void planner(
         mexPrintf("\n end run: %d", found_path);
         if(!found_path){
             mexPrintf("\n 3d path not found");
-            new_pose = search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
+            search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
             found_path=true;
             path_2d = true;
             // Path_dyn = Path2d;
@@ -530,7 +531,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
                  "Check number of input args.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
-                "One output argument required.");
+                "One output argument required.  ");
     }
     
     /* get the dimensions of the map and the map matrix itself*/
