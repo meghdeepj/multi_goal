@@ -274,7 +274,7 @@ static void planner(
 {   
     if(curr_time==0){                                                                                               // initialize variables for new map
         have_path=false;
-        traj.init(object_traj_set, target_steps, num_obj, 40, obj_size);
+        traj.init(object_traj_set, target_steps, num_obj, 35, obj_size);
 
         Path = queue<pair<int,int>>();
         Path2d = queue<pair<int,int>>();
@@ -291,9 +291,9 @@ static void planner(
                 Path.pop();
                 pair<int, int> p = Path.front();
                 // mexPrintf("\n next goal is %d,%d", p.first, p.second);
-                //     mexPrintf("\n curr_time is %d", curr_time);
+                mexPrintf("\n Path_size is %d", Path.size());
                 traj.update(object_traj_set, target_steps, curr_time);
-                if(traj.check_plan(Path_vector, Path_vector.size() - Path.size()-1)==false)
+                if(traj.check_plan(Path_vector, Path_vector.size() - Path.size())==false)
                 {
                     mexPrintf("\n obstacle predicted, replanning");
                     have_path=false;
@@ -325,7 +325,7 @@ static void planner(
             action_ptr[1] = target_traj[trace_idx+target_steps];
             trace_idx--;
         }
-        mexPrintf("\n next step is %.3f,%.3f", action_ptr[0], action_ptr[1]);
+        // mexPrintf("\n next step is %.3f,%.3f", action_ptr[0], action_ptr[1]);
         return;
     }
     // 9-connected grid (for 3D)
@@ -473,13 +473,13 @@ static void planner(
             }  
         }
         mexPrintf("\n end run: %d", found_path);
-        if(!found_path){
-            mexPrintf("\n 3d path not found");
-            search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
-            found_path=true;
-            path_2d = true;
-            // Path_dyn = Path2d;
-        }
+        // if(!found_path){
+        //     mexPrintf("\n 3d path not found");
+        //     search_2d(map,x_size,y_size,collision_thresh,robotposeX,robotposeY,curr_time,goalposeX,goalposeY,targetposeV,num_obj,object_traj_set,obj_size,target_steps);
+        //     found_path=true;
+        //     path_2d = true;
+        //     // Path_dyn = Path2d;
+        // }
         if(found_path==true){
             goal_poses.pop();
             found_path = false;
@@ -487,18 +487,10 @@ static void planner(
             robotposeY = goalposeY;
             mexPrintf("\n ready for new run \n");
         }
-        if(path_2d==false){
-            while(!Path_dyn.empty()){
-                Path.push(Path_dyn.top());
-                Path_vector.push_back(Path_dyn.top());
-                Path_dyn.pop();
-            }
-        }else{
-            while(!Path2d.empty()){
-                Path_dyn.push(Path2d.front());
-                Path_vector.push_back(Path2d.front());
-                Path2d.pop();
-            }
+        while(!Path_dyn.empty()){
+            Path.push(Path_dyn.top());
+            Path_vector.push_back(Path_dyn.top());
+            Path_dyn.pop();
         }
     }
     
