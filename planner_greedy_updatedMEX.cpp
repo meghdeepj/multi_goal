@@ -21,7 +21,7 @@ using namespace std;
 #define NUMBER_OBJECTS          prhs[6]
 #define OBJECT_TRAJ             prhs[7]
 #define OBJECT_SIZE             prhs[8]
-#define NUMBER_TARGET           prhs[9]
+#define NUMBER_TARGETS          prhs[9]
 #define CAUGHT                  prhs[10]
 
 
@@ -75,11 +75,10 @@ static void planner(
     int curr_time,
     double* action_ptr,
     int num_obj,
-    double* object_traj_set, 
+    double* object_traj, 
     double* obj_size,
-    int num_tar,
     double* caught
-        )
+    )
 {
     /*New added data
     * 
@@ -144,7 +143,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     /* Check for proper number of arguments */
     if (nrhs != 11) {
         mexErrMsgIdAndTxt( "MATLAB:planner:invalidNumInputs",
-                "More input arguments required.");
+                "Invalid # of args.");
     } else if (nlhs != 1) {
         mexErrMsgIdAndTxt( "MATLAB:planner:maxlhs",
                 "One output argument required.");
@@ -201,11 +200,10 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     //Get the new stuff
     int num_obj = mxGetScalar(NUMBER_OBJECTS);
-    int num_tar = mxGetScalar(NUMBER_TARGET);
+    int num_tar = mxGetScalar(NUMBER_TARGETS);
     double* object_traj_set = mxGetPr(OBJECT_TRAJ);
     double* obj_size = mxGetPr(OBJECT_SIZE);
-    double* caught = mxGetPr(OBJECT_SIZE);
-
+    double* caught = mxGetPr(CAUGHT);
 
     /* Do the actual planning in a subroutine */
     planner(map, 
@@ -221,7 +219,6 @@ void mexFunction( int nlhs, mxArray *plhs[],
             num_obj, 
             object_traj_set,
             obj_size,
-            num_tar,
             caught);
     // printf("DONE PLANNING!\n");
     return;   

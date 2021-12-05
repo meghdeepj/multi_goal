@@ -41,12 +41,12 @@ pause(1.0);
 
 % robot can take at most as many steps as target takes
 while (true)
-    
-    %imagesc(envmap'); axis square; colorbar; colormap jet;
+    hold off;
+    imagesc(envmap'); axis square; colorbar; colormap jet; hold on;
     
     % call robot planner to find what they want to do
     t0 = clock;
-    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, Obs, sizeObs,numTar, caught);
+    newrobotpos = robotplanner(envmap, robotpos, targettraj, targetpos, time, C, numObs,Obs, sizeObs,numTar, caught);
     if (size(newrobotpos, 1) > size(targettraj, 1) || size(newrobotpos, 2) ~= 2)
         fprintf(1, 'ERROR: invalid action\n');
         fprintf(1, '\t newrobotpos must be M x %d with M <= %d.\n', 2, size(targettraj, 1));
@@ -99,7 +99,9 @@ while (true)
         y2 = yO+sizeObs(2)/2;
         x = [x1, x2, x2, x1, x1];
         y = [y1, y1, y2, y2, y1];
-        plot(x, y, 'b-');
+        plot(x, y, 'r-');
+        plot([x1 x2], [y1 y2], 'r-')
+        plot([x2 x1], [y1 y2], 'r-')
         if(robotpos(1) > x1 && robotpos(1) < x2 && robotpos(2) > y1 && robotpos(2) < y2)
             fprintf('Collision with moving object!\n');
             return;
@@ -131,13 +133,16 @@ while (true)
         curX = targetpos(1+2*(i-1));
         curY = targetpos(2+2*(i-1));
         if (abs(robotpos(1)-curX) <= thresh && abs(robotpos(2)-curY) <= thresh)
-            caught(i) = 1;
+            if(caught(i) ==0)
+                caught(i) = 1;
+            end
         end
     end
     if(sum(caught) == numTar)
         break;
     end
 end
+hold on;
 
 fprintf(1, '\nRESULT:\n');
 fprintf(1, '\t target caught = %d\n', caught);
