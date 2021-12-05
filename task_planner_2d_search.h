@@ -75,13 +75,13 @@ class Taskplanner_2d_search
 
 
         //2d dijikstra
-        double dij_search(int goalposeX,int goalposeY)
+        double dij_search(pair<int,int> start_points,int goalposeX,int goalposeY)
         {
             int dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
             int dy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
             int time_variable=0;
-            int startposeX = start_point.first;
-            int startposeY = start_point.second;
+            int startposeX = start_points.first;
+            int startposeY = start_points.second;
             
             priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> openList;
             unordered_map<int, bool> closedList;     //closedList record if in the closed list by index
@@ -142,12 +142,12 @@ class Taskplanner_2d_search
             for(int i=0;i<loop;i++)
             {
                 int min_val=numeric_limits<int>::max();
-                pair<int,int> min_vec;
+                pair<int,int> min_vec = start_point;
                 int min_index;
                 //cout<<"debug"<<endl;
                 for(int j=0;j<goals.size();j++)
                 {   
-                    int temp_dij=dij_search(goals[j].first,goals[j].second);
+                    int temp_dij=dij_search(prev_vec,goals[j].first,goals[j].second);
                     if(temp_dij<=min_val)
                     {
                         min_val=temp_dij;
