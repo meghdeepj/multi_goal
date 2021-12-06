@@ -357,7 +357,7 @@ static void planner(
         Taskplanner_2d_search task(map, collision_thresh, x_size, y_size,start_point,goals);
         task.queuepreprocess();
         results=task.computeorder_2d();
-
+        cout<<"####2d task plan processed####"<<endl;
         mexPrintf("\n order is :");
         for(int i=0;i<results.size();i++)
         {

@@ -16,11 +16,7 @@ class Taskplanner_2d_search
     pair<int,int> start_point;
     queue<pair<int,int>> goal_pose;
     
-    struct grid_info
-    {
-        int parent = -1;   //Parent's map index
-        int f = INT_MAX;
-    };
+    
 
 
     public:
@@ -75,22 +71,21 @@ class Taskplanner_2d_search
 
 
         //2d dijikstra
-        double dij_search(pair<int,int> start_points,int goalposeX,int goalposeY)
+        int dij_search(pair<int,int> prev,int goalposeX,int goalposeY)
         {
             int dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
             int dy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
-            int time_variable=0;
-            int startposeX = start_points.first;
-            int startposeY = start_points.second;
+            int startposeX = prev.first;
+            int startposeY = prev.second;
             
             priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> openList;
             unordered_map<int, bool> closedList;     //closedList record if in the closed list by index
-            unordered_map<int, grid_info> nodeInfo;  //Stores info of each grid based on the map
+            unordered_map<int, int> nodeInfo;  //Stores info of each grid based on the map
             bool reached = false;
-            nodeInfo[xyToindex(startposeX, startposeY)].f = 0;  
+            nodeInfo[xyToindex(startposeX, startposeY)] = 0;  
             openList.push(make_pair(0 , xyToindex(startposeX, startposeY)));
             double path_cost;
-            while(!openList.empty())//&&num_goals<=target_steps
+            while(!openList.empty()&&!reached)//&&num_goals<=target_steps
             {
                 
                 //Pop out the cell with lowest f value
@@ -98,7 +93,6 @@ class Taskplanner_2d_search
                 openList.pop();//Remove it 
 
                 closedList[node.second] = true;     //cell index, closed Add to the closedList
-                time_variable ++;
                 //Iterate Over the dx dy
                 for(int i=0 ; i<8 ; i++)
                 {              
@@ -111,26 +105,22 @@ class Taskplanner_2d_search
                         continue;
                     double h_val = 0;
                     
-                    if (nodeInfo[successor_index].f > h_val+nodeInfo[node.second].f + map[successor_index]) //If F of new > g of parent + cost of new   
+                    if (nodeInfo[successor_index] > h_val+nodeInfo[node.second] + map[successor_index]) //If F of new > g of parent + cost of new   
                     {      
-                        nodeInfo[successor_index].f = h_val+nodeInfo[node.second].f + map[successor_index];  //Set f of new = g + c
-                        openList.push(make_pair(nodeInfo[successor_index].f  , successor_index));
-                        nodeInfo[successor_index].parent = node.second;
+                        nodeInfo[successor_index] = h_val+nodeInfo[node.second] + map[successor_index];  //Set f of new = g + c
+                        openList.push(make_pair(nodeInfo[successor_index]  , successor_index));
+                        
                     }
                     if (successorX==goalposeX&&successorY==goalposeY)
                     {
                         reached = true;
-                        path_cost = nodeInfo[successor_index].f;
+                        path_cost = nodeInfo[successor_index];
                         continue;
                     }
                 }
 
-                if(reached)
-                {
-                    break;
-                    return path_cost;
-                }
             }
+            return path_cost;
 
         }
 
@@ -142,7 +132,7 @@ class Taskplanner_2d_search
             for(int i=0;i<loop;i++)
             {
                 int min_val=numeric_limits<int>::max();
-                pair<int,int> min_vec = start_point;
+                pair<int,int> min_vec;
                 int min_index;
                 //cout<<"debug"<<endl;
                 for(int j=0;j<goals.size();j++)
@@ -159,6 +149,7 @@ class Taskplanner_2d_search
                 goals.erase(goals.begin()+min_index);
                 prev_vec = min_vec;
             }
+            
             return sequence;
         }
 
