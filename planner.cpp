@@ -8,9 +8,9 @@
 #include <unordered_map>
 #include <stack>
 #include "traj_pred.h"
-#include "task_planner.h"
+//#include "task_planner.h"
 #include "task_planner_2d_search.h"
-
+#include <time.h>
 using namespace std;
 
 /* Input Arguments */
@@ -346,7 +346,9 @@ static void planner(
         for(int i=num_tar-1;i>=0;i--){
             goals.push(make_pair(int(target_traj[2*i*target_steps+target_steps-1]), int(target_traj[(2*i+1)*target_steps+target_steps-1])));
         }
-
+        
+        clock_t str_t,en_t;
+        str_t=clock();
         //Taskplanner task(start_point,goals);
         //task.queuepreprocess();
         //results=task.computeorder();
@@ -357,7 +359,8 @@ static void planner(
         Taskplanner_2d_search task(map, collision_thresh, x_size, y_size,start_point,goals);
         task.queuepreprocess();
         results=task.computeorder_2d();
-        cout<<"####2d task plan processed####"<<endl;
+        en_t=clock();
+        mexPrintf("\n sequence process time is %e",(double)(en_t-str_t)/CLOCKS_PER_SEC);
         mexPrintf("\n order is :");
         for(int i=0;i<results.size();i++)
         {

@@ -17,7 +17,10 @@ class Taskplanner_2d_search
     queue<pair<int,int>> goal_pose;
     
     
-
+    struct grid_info
+    {
+        int f = INT_MAX;
+    };
 
     public:
  
@@ -80,11 +83,11 @@ class Taskplanner_2d_search
             
             priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> openList;
             unordered_map<int, bool> closedList;     //closedList record if in the closed list by index
-            unordered_map<int, int> nodeInfo;  //Stores info of each grid based on the map
+            unordered_map<int, grid_info> nodeInfo;  //Stores info of each grid based on the map
             bool reached = false;
-            nodeInfo[xyToindex(startposeX, startposeY)] = 0;  
+            nodeInfo[xyToindex(startposeX, startposeY)].f = 0;  
             openList.push(make_pair(0 , xyToindex(startposeX, startposeY)));
-            double path_cost;
+            int path_cost;
             while(!openList.empty()&&!reached)//&&num_goals<=target_steps
             {
                 
@@ -103,19 +106,22 @@ class Taskplanner_2d_search
                     int successor_index = xyToindex(successorX, successorY);
                     if (gridvalid(successor_index)==false) // ||closedList[successor_index] == true   if it is an obsticle or already in the closed list
                         continue;
-                    double h_val = 0;
+                    int h_val = 0;
                     
-                    if (nodeInfo[successor_index] > h_val+nodeInfo[node.second] + map[successor_index]) //If F of new > g of parent + cost of new   
+                    if (nodeInfo[successor_index].f > h_val+nodeInfo[node.second].f + map[successor_index]) //If F of new > g of parent + cost of new   
                     {      
-                        nodeInfo[successor_index] = h_val+nodeInfo[node.second] + map[successor_index];  //Set f of new = g + c
-                        openList.push(make_pair(nodeInfo[successor_index]  , successor_index));
+                        nodeInfo[successor_index].f = h_val+nodeInfo[node.second].f + map[successor_index];  //Set f of new = g + c
+                        openList.push(make_pair(nodeInfo[successor_index].f  , successor_index));
                         
                     }
-                    if (successorX==goalposeX&&successorY==goalposeY)
-                    {
+                    //mexPrintf("\n successor x %d y%d",successorX,successorY);
+                    //mexPrintf("\n goal x %d y%d",goalposeX,goalposeX);
+                    if (successorX==goalposeX && successorY==goalposeY)
+                    {   
+                        //mexPrintf("\n before reach check");
                         reached = true;
-                        path_cost = nodeInfo[successor_index];
-                        continue;
+                        path_cost = nodeInfo[successor_index].f;
+                        //mexPrintf("\n the map cost is %d", path_cost);
                     }
                 }
 
@@ -138,8 +144,11 @@ class Taskplanner_2d_search
                 for(int j=0;j<goals.size();j++)
                 {   
                     int temp_dij=dij_search(prev_vec,goals[j].first,goals[j].second);
+                    
+                    mexPrintf("\n between the previous pair %d % d and current pair %d %d", prev_vec.first,prev_vec.second,goals[j].first,goals[j].second);
+                    mexPrintf("\n the 2D search cost is %d", temp_dij);
                     if(temp_dij<=min_val)
-                    {
+                    {    
                         min_val=temp_dij;
                         min_vec=goals[j];
                         min_index=j;
