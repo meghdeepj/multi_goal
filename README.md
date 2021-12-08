@@ -1,5 +1,7 @@
 ## Multigoal Planning in a Dynamic Environment
 
+### 16782 - Planning and Decision-making in Robotics: Team11 Course Project Fall 2021
+
 
 This project aimed to address planning in a dynamic environment with limited information about moving elements. The goal was to compile a system able to produce plans as close to optimal within the information available to the agent. A planning pipeline was developed to generate high-level task plans, low-level path plans, and to predict possible obstacle collisions. The resulting program proved capable of handling dynamic environments of complex geometry and complicated obstacle movement, while generating efficient plans. Such an use-case can be seen when planning for delivery robots or warehouse robots.
 
